@@ -8,6 +8,7 @@ import { HealthSchema, ReadinessSchema, type Readiness } from '@spine/shared-sch
 import Fastify, { type FastifyInstance } from 'fastify';
 import {
   jsonSchemaTransform,
+  jsonSchemaTransformObject,
   serializerCompiler,
   validatorCompiler,
   type ZodTypeProvider,
@@ -86,6 +87,8 @@ export async function buildHttpServer(options: HttpServerOptions): Promise<Fasti
       },
     },
     transform: jsonSchemaTransform,
+    // Emits schemas registered with an `id` (e.g. the recursive Condition) into components.
+    transformObject: jsonSchemaTransformObject,
   });
   if (apiDocsEnabled(config)) {
     await app.register(swaggerUi, { routePrefix: '/docs', staticCSP: true });
