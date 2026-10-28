@@ -183,7 +183,7 @@ from `config.ts` on 2026-10-28 (re-check it when you add a variable).
 | `BOOTSTRAP_ADMIN_PASSWORD`            | unset                   | ≥ 12 characters; production refuses placeholders                                       |
 | `INGEST_MAX_BACKLOG`                  | `10000`                 | Outbox backlog above which ingestion answers 503 (back-pressure)                       |
 | `WEBHOOK_SOURCES_JSON`                | `{}`                    | `{"<id>": {"normalizer": "…", "secret": "≥32 chars"}}`                                 |
-| `OUTBOX_POLL_INTERVAL_MS`             | `200`                   | Relay poll interval when idle                                                          |
+| `OUTBOX_POLL_INTERVAL_MS`             | `50`                    | Relay poll interval when idle                                                          |
 | `OUTBOX_BATCH_SIZE`                   | `100`                   | Events per relay transaction                                                           |
 | `EVENT_WORKER_CONCURRENCY`            | `8`                     | Parallel event deliveries per worker                                                   |
 | `PLAYBOOK_WORKER_CONCURRENCY`         | `4`                     | Parallel playbook steps per worker                                                     |

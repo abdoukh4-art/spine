@@ -26,6 +26,8 @@ _Last updated: 2026-10-28 (evening), end of Phase 2 (integration)._
   - Playwright on the real stack: 4 journeys with axe accessibility checks.
 - **Coverage** (from the workstream reports, unit): playbook-engine 99.6 % lines / 90.1 % branches,
   enrichers 99.5 % / 98.4 %, shared-schema 98.9 % lines; domain folders 98–100 % lines.
+- **Performance** (k6, one 4-core host): 200 alerts/s accepted with 0 errors, p95 167 ms, 0.4 % shed by
+  back-pressure; ingest → scored p95 125 ms at 20/s. Two load bugs found and fixed (ADR-0090).
 - **Contract:** real responses validated against the committed `openapi.json`; CI fails if the file is stale.
 - **CI:** lint, arch, typecheck, unit, integration, contract, build, docs, commitlint, CodeQL,
   gitleaks, pnpm audit, SBOM, Docker build + Trivy (api, console), e2e.
@@ -34,7 +36,7 @@ _Last updated: 2026-10-28 (evening), end of Phase 2 (integration)._
 
 ## Stubbed / not done
 
-- Load test (k6) has been validated syntactically but not executed. Phase 3.
+- Load test: knee above 200/s and the 30-minute soak not run yet ([performance.md](operations/performance.md)).
 - Threat-model rows still marked ⏳ (repudiation for playbook publish/enable/cancel is audited
   after commit, not atomically).
 - No real integrations (by design, ADR-0018), no SSO/MFA, no multi-tenancy (non-goals).

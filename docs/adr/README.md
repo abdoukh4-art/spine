@@ -84,3 +84,4 @@ in the same PR. CI checks that every ADR file appears in this index.
 | [0083](0083-single-host-deployment-compose-and-systemd.md)        | Single-host deployment: hardened Docker Compose, systemd units as the alternative            | accepted | ops, security          |
 | [0084](0084-slos-and-burn-rate-alerting.md)                       | SLOs with multi-window, multi-burn-rate alerting                                             | accepted | ops                    |
 | [0085](0085-image-scanning-and-sbom-in-ci.md)                     | Scan container images with Trivy and publish image SBOMs in CI                               | accepted | security, process      |
+| [0090](0090-load-test-fixes-retention-fail-open-poll-interval.md) | Bounded job retention, fail-open rate limiting, 50 ms outbox poll (from the first load test) | accepted | ops, architecture      |

@@ -74,7 +74,7 @@ const ConfigSchema = z.object({
       }
     }),
 
-  OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(10).default(200),
+  OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(10).default(50),
   OUTBOX_BATCH_SIZE: z.coerce.number().int().min(1).max(1000).default(100),
   EVENT_WORKER_CONCURRENCY: z.coerce.number().int().min(1).default(8),
   PLAYBOOK_WORKER_CONCURRENCY: z.coerce.number().int().min(1).default(4),
