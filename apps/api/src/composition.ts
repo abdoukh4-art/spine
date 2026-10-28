@@ -74,13 +74,7 @@ export function createApplication(
     },
     // INTEGRATION: replace with alerts.get + enrichment.getForAlert + scoring.getForAlert in Phase 2.
     alertSnapshot: { get: () => Promise.resolve(null) },
-    // INTEGRATION: replace with auth public API (audit.record) in Phase 2.
-    audit: {
-      record: (entry) => {
-        logger.info({ audit: entry }, 'audit (placeholder until auth is wired)');
-        return Promise.resolve();
-      },
-    },
+    audit: auth.api.audit,
   });
   const metrics = createMetricsModule(deps);
 

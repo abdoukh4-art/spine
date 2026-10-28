@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { PlatformDeps, SpineModule } from '../../platform/module.js';
+import type { BackgroundTask, PlatformDeps, SpineModule } from '../../platform/module.js';
 import { ApprovalService } from './application/approvals.js';
 import { PlaybookCatalog } from './application/catalog.js';
 import { RunExecutor } from './application/executor.js';
@@ -53,8 +53,12 @@ export function createPlaybooksModule(
     ...options.simulation,
   });
   let metrics: PlaybookMetrics | null = null;
-  const store = new PostgresPlaybooksStore(deps.db, deps.events, recorder, {
-    runFinished: (info) => metrics?.runFinished(info),
+  const store = new PostgresPlaybooksStore({
+    db: deps.db,
+    events: deps.events,
+    audit: gateways.audit,
+    simulatedActions: recorder,
+    listener: { runFinished: (info) => metrics?.runFinished(info) },
   });
   metrics = new PlaybookMetrics(() => store.approvals.countPending());
   const bullQueue = deps.redis ? new BullMqRunQueue(deps.redis) : null;
@@ -70,7 +74,7 @@ export function createPlaybooksModule(
     ids,
     logger,
   });
-  const approvals = new ApprovalService({ store, queue, audit: gateways.audit, clock, logger });
+  const approvals = new ApprovalService({ store, queue, clock, logger });
   const handlers = createStepHandlers({
     gateways,
     actions: options.actions ?? createSimulatedIntegrations(recorder, clock),
@@ -93,30 +97,42 @@ export function createPlaybooksModule(
     routes: (app) =>
       registerPlaybookRoutes(app, { catalog, runs, approvals, simulatedActions: recorder }),
     subscribers: () => playbookSubscribers({ runs, repository: store.runs, queue }),
-    backgroundTasks: () => {
-      const tasks = [
-        new PlaybookSeedTask(catalog, path.resolve(config.CONFIG_DIR, 'playbooks'), logger),
-        new RunReconcilerTask(() => executor.reconcile(), logger),
-        new ApprovalExpiryTask(
-          () => approvals.expireDue(),
-          config.PLAYBOOK_APPROVAL_SWEEP_INTERVAL_MS,
-          logger,
-        ),
-      ];
-      if (!deps.redis) return tasks;
-      const worker = new RunWorkerTask({
-        connection: deps.redis,
-        concurrency: config.PLAYBOOK_WORKER_CONCURRENCY,
-        logger,
-        advance: (runId, signal) => executor.advanceRun(runId, signal),
-      });
-      const closeQueue = {
-        name: 'playbook-run-queue',
-        start: () => undefined,
-        stop: () => bullQueue?.close() ?? Promise.resolve(),
-      };
-      return [...tasks, worker, closeQueue];
-    },
+    backgroundTasks: () => backgroundTasks(deps, { catalog, executor, approvals, bullQueue }),
   };
   return { module, api, catalog, runs, approvals, executor, store, queue };
+}
+
+/** Worker-process tasks: seed, reconcile, sweep approvals and (with Redis) run the executor. */
+function backgroundTasks(
+  deps: PlatformDeps,
+  parts: {
+    catalog: PlaybookCatalog;
+    executor: RunExecutor;
+    approvals: ApprovalService;
+    bullQueue: BullMqRunQueue | null;
+  },
+): BackgroundTask[] {
+  const { config, logger } = deps;
+  const tasks: BackgroundTask[] = [
+    new PlaybookSeedTask(parts.catalog, path.resolve(config.CONFIG_DIR, 'playbooks'), logger),
+    new RunReconcilerTask(() => parts.executor.reconcile(), logger),
+    new ApprovalExpiryTask(
+      () => parts.approvals.expireDue(),
+      config.PLAYBOOK_APPROVAL_SWEEP_INTERVAL_MS,
+      logger,
+    ),
+  ];
+  if (!deps.redis) return tasks;
+  const worker = new RunWorkerTask({
+    connection: deps.redis,
+    concurrency: config.PLAYBOOK_WORKER_CONCURRENCY,
+    logger,
+    advance: (runId, signal) => parts.executor.advanceRun(runId, signal),
+  });
+  const closeQueue: BackgroundTask = {
+    name: 'playbook-run-queue',
+    start: () => undefined,
+    stop: () => parts.bullQueue?.close() ?? Promise.resolve(),
+  };
+  return [...tasks, worker, closeQueue];
 }

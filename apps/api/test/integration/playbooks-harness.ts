@@ -58,6 +58,8 @@ const authenticator: Authenticator = {
 export interface FaultControls {
   failureRateByKind: Record<string, number>;
   randoms: number[];
+  /** When true, the audit gateway throws (to prove decisions roll back with their audit). */
+  auditFails?: boolean;
 }
 
 export interface Harness {
@@ -156,6 +158,7 @@ export async function createHarness(
       alertSnapshot: { get: (alertId: string) => Promise.resolve(snapshots.get(alertId) ?? null) },
       audit: {
         record: (entry: Parameters<AuditGateway['record']>[0]) => {
+          if (faults.auditFails) return Promise.reject(new Error('audit store unavailable'));
           audits.push(entry);
           return Promise.resolve();
         },

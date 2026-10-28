@@ -178,6 +178,21 @@ describe('approval gates', () => {
     ).rejects.toThrow(/already approved/);
   });
 
+  it('a decision and its audit entry commit together: if auditing fails, nothing is decided', async () => {
+    const { runId, approvalId } = await waitingMalwareRun();
+    const analyst = { id: '0190f0a0-0000-7000-8000-00000000000b', role: 'analyst' as const };
+    h.faults.auditFails = true;
+    await expect(
+      h.pb.approvals.decide(approvalId, { decision: 'approve' }, analyst),
+    ).rejects.toThrow('audit store unavailable');
+    h.faults.auditFails = false;
+    expect((await h.pb.store.approvals.get(approvalId))?.status).toBe('pending');
+    expect((await h.pb.runs.summary(runId)).status).toBe('waiting_approval');
+    expect((await h.pb.approvals.decide(approvalId, { decision: 'approve' }, analyst)).status).toBe(
+      'approved',
+    );
+  });
+
   it('reject: follows onReject, nothing is blocked', async () => {
     const { runId, approvalId } = await waitingMalwareRun();
     await h.pb.approvals.decide(

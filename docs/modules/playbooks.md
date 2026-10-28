@@ -86,9 +86,10 @@ HTTP (all under `/api/v1`, see [api-contract.md](../architecture/api-contract.md
 Events: consumes `alert.scored`, `playbook.run.requested`, `approval.decided`; publishes
 `playbook.run.requested`, `playbook.run.finished`, `approval.requested`, `approval.decided`.
 
-Ports onto other modules (wired in `composition.ts`, placeholders marked `// INTEGRATION`
-until Phase 2): `EnrichmentGateway`, `ScoringGateway`, `AlertStatusGateway`,
-`AlertSnapshotGateway`, `AuditGateway`.
+Ports onto other modules, wired in `composition.ts`: `AuditGateway` → the auth module's
+`audit.record` (approval decisions are audited **inside** the decision transaction);
+`EnrichmentGateway`, `ScoringGateway`, `AlertStatusGateway` and `AlertSnapshotGateway` are
+placeholders marked `// INTEGRATION` until Phase 2.
 
 Metrics: `spine_playbook_runs{playbook,status}`, `spine_playbook_run_duration_seconds{playbook,status}`,
 `spine_playbook_step_duration_seconds{type,status}`, `spine_approvals_pending`.
@@ -106,6 +107,7 @@ Metrics: `spine_playbook_runs{playbook,status}`, `spine_playbook_run_duration_se
 | The projection always equals a rebuild from the events                                | `playbooks.test.ts` › "keeps the playbook_runs projection equal to a rebuild from the events"                   |
 | At most one automatic run per (playbook, alert): `alert.scored` redelivery is a no-op | `playbooks.test.ts` › "is idempotent: redelivering alert.scored creates no second run"                          |
 | A dry run creates no non-dry simulated action and no approval                         | `playbooks.test.ts` › "dry-run: skips the approval and records only dry-run simulated actions"                  |
+| An approval decision is never stored without its audit entry (one transaction)        | `playbooks.test.ts` › "a decision and its audit entry commit together…"                                         |
 | An approval is decided at most once                                                   | `playbooks-http.test.ts` › "records a decision once; a second decision is a 409"                                |
 | After Redis loses its jobs, every resumable run (and only those) is re-enqueued       | `playbooks-queue.test.ts` › "reconciler: …"                                                                     |
 

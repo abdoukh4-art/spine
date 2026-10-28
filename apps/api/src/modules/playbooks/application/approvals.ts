@@ -4,14 +4,13 @@ import { ConflictError, ForbiddenError, NotFoundError } from '../../../platform/
 import type { Logger } from '../../../platform/logger.js';
 import type { Clock } from '../../../platform/runtime.js';
 import { decisionProblem, timeoutOutcome } from '../domain/approval.js';
-import type { AuditGateway, PlaybooksStore, PlaybooksUnitOfWork, RunQueue } from './ports.js';
+import type { PlaybooksStore, PlaybooksUnitOfWork, RunQueue } from './ports.js';
 import { CONCURRENCY_RETRIES } from './runs.js';
 
 /** Dependencies of {@link ApprovalService}. */
 export interface ApprovalServiceDeps {
   store: PlaybooksStore;
   queue: RunQueue;
-  audit: AuditGateway;
   clock: Clock;
   logger: Logger;
 }
@@ -26,7 +25,7 @@ export interface Decider {
 /**
  * Approval use cases (human-in-the-loop). A decision is ONE transaction: lock the approval
  * row, check the rules, mark it decided, and append `approval.granted|rejected` to the
- * run's log. Then it is audited and the run is re-enqueued so the executor continues.
+ * run's log, and write the audit entry. Then the run is re-enqueued so the executor continues.
  */
 export class ApprovalService {
   constructor(private readonly deps: ApprovalServiceDeps) {}
@@ -49,15 +48,6 @@ export class ApprovalService {
         const { approval, seq } = await this.deps.store.transaction((uow) =>
           this.decideInTransaction(uow, approvalId, input, actor),
         );
-        await this.deps.audit.record({
-          actorId: actor.id,
-          actorType: 'user',
-          action: 'approval.decided',
-          targetType: 'approval',
-          targetId: approvalId,
-          ...(actor.requestId ? { requestId: actor.requestId } : {}),
-          details: { decision: input.decision, runId: approval.runId, stepId: approval.stepId },
-        });
         await this.enqueueQuietly(approval.runId, seq);
         return approval;
       } catch (err) {
@@ -100,6 +90,16 @@ export class ApprovalService {
         reason: 'decision',
       },
       at: now.toISOString(),
+    });
+    // Audited in the same transaction: a decision without its audit entry cannot exist.
+    await uow.audit({
+      actorId: actor.id,
+      actorType: 'user',
+      action: 'approval.decided',
+      targetType: 'approval',
+      targetId: approvalId,
+      ...(actor.requestId ? { requestId: actor.requestId } : {}),
+      details: { decision: input.decision, runId: approval.runId, stepId: approval.stepId },
     });
     return { approval: decided, seq };
   }

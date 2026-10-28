@@ -16,6 +16,7 @@ import type {
   ScoreExplanation,
   SimulatedAction,
 } from '@spine/shared-schema';
+import type { Db } from '../../../platform/db/database.js';
 import type { DomainEventDraft } from '../domain/run-view.js';
 
 /**
@@ -55,17 +56,23 @@ export interface AlertSnapshotGateway {
   get(alertId: string): Promise<RunSnapshot | null>;
 }
 
-/** Explicit, domain-significant audit entries (auth module's `AuditRecorder`). */
+/** One explicit audit entry. */
+export interface AuditEntry {
+  actorId: string | null;
+  actorType: 'user' | 'system';
+  action: string;
+  targetType: string;
+  targetId: string;
+  requestId?: string;
+  details?: Record<string, unknown>;
+}
+
+/**
+ * Explicit, domain-significant audit entries (the auth module's `AuditRecorder`). Pass
+ * `executor` (an open transaction) to commit the entry atomically with the state change.
+ */
 export interface AuditGateway {
-  record(entry: {
-    actorId: string | null;
-    actorType: 'user' | 'system';
-    action: string;
-    targetType: string;
-    targetId: string;
-    requestId?: string;
-    details?: Record<string, unknown>;
-  }): Promise<void>;
+  record(entry: AuditEntry, executor?: Db): Promise<void>;
 }
 
 /** Everything the module needs from other modules. */
@@ -256,6 +263,8 @@ export interface PlaybooksUnitOfWork {
   approvals: ApprovalRepository;
   /** Publishes domain events in this transaction (transactional outbox, ADR-0009). */
   publish(events: readonly DomainEventDraft[]): Promise<void>;
+  /** Records an audit entry in this transaction (it commits or rolls back with it). */
+  audit(entry: AuditEntry): Promise<void>;
 }
 
 /** Entry point to persistence: auto-commit repositories, or an explicit unit of work. */
