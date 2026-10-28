@@ -51,6 +51,12 @@ in the same PR. CI checks that every ADR file appears in this index.
 | [0036](0036-alert-lifecycle-resolved-at.md)                       | `resolvedAt` is the first close, never moved; same-status updates are no-ops    | accepted | data                   |
 | [0037](0037-alert-queue-query-semantics.md)                       | Alert queue queries: NULLS LAST cursors, effective severity, parent techniques  | accepted | data, architecture     |
 | [0038](0038-score-projection-ordering-guard.md)                   | The score projection ignores scores older than the one already applied          | accepted | data, architecture     |
+| [0050](0050-playbook-engine-reduce-decide-act.md)                 | Playbook engine as reduce → decide → act, with attempt-scoped idempotency keys  | accepted | architecture           |
+| [0051](0051-executor-hosting-on-bullmq.md)                        | Hosting the executor on BullMQ: one job = one advance, timers as delayed jobs   | accepted | architecture, ops      |
+| [0052](0052-run-lifecycle-dry-run-cancel-timeout.md)              | Run lifecycle semantics: dry-run, cancellation, approval timeouts               | accepted | architecture, security |
+| [0053](0053-run-snapshot-and-evaluation-context.md)               | Runs carry an alert snapshot; conditions see an enrichment summary              | accepted | architecture, data     |
+| [0054](0054-locked-down-playbook-source-parsing.md)               | Locked-down YAML/JSON parsing for playbook sources                              | accepted | security               |
+| [0055](0055-run-projection-and-outbox-in-append-transaction.md)   | Rebuild the run projection and emit domain events inside every append           | accepted | data, architecture     |
 | [0060](0060-authenticator-reloads-user-with-short-cache.md)       | Authenticator reloads the user per request (≤ 30 s cache)                       | accepted | security, architecture |
 | [0061](0061-csrf-origin-required-in-every-environment.md)         | CSRF: custom header + allow-listed Origin in every environment                  | accepted | security               |
 | [0062](0062-strict-refresh-rotation-under-row-lock.md)            | Strict refresh rotation under a row lock, no grace window                       | accepted | security, data         |
