@@ -3,3 +3,4 @@ dist
 coverage
 docs/architecture/openapi.json
 infra/grafana/dashboards/*.json
+.claude

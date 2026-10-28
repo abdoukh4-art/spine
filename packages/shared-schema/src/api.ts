@@ -32,6 +32,11 @@ export const BatchResultSchema = z.object({
   accepted: z.number().int(),
   deduplicated: z.number().int(),
   rejected: z.number().int(),
+  /**
+   * Lines that were well-formed but not alerts (e.g. Suricata `flow`/`dns` telemetry in an EVE
+   * file). Added in Phase 1 (additive): they are neither ingested nor errors.
+   */
+  skipped: z.number().int(),
   errors: z.array(z.object({ line: z.number().int(), message: z.string() })).max(100),
 });
 export type BatchResult = z.infer<typeof BatchResultSchema>;
@@ -119,6 +124,18 @@ export const CaseSchema = z.object({
   updatedAt: TimestampSchema,
 });
 export type Case = z.infer<typeof CaseSchema>;
+
+/** `GET /cases/:id`: the case plus summaries of its linked alerts. */
+export const CaseDetailSchema = CaseSchema.extend({ alerts: z.array(AlertSummarySchema) });
+export type CaseDetail = z.infer<typeof CaseDetailSchema>;
+
+/** `GET /cases` query: optional status filter + cursor pagination (ADR-0024). */
+export const CaseListQuerySchema = z.object({
+  status: CaseStatusSchema.optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+  cursor: z.string().max(512).optional(),
+});
+export type CaseListQuery = z.infer<typeof CaseListQuerySchema>;
 
 export const CreateCaseRequestSchema = z.object({
   title: z.string().min(1).max(300),

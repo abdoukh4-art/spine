@@ -56,29 +56,45 @@ Auth details (see [modules/auth.md](../modules/auth.md)):
 
 ## Ingestion (module: ingestion)
 
-| Method | Path                                                    | Auth                                                                                                     | Request                                                                        | Response                                                                                                                          |
-| ------ | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| POST   | `/api/v1/alerts`                                        | A                                                                                                        | `CanonicalAlertInput`; optional `Idempotency-Key` header                       | `202 {alertId, status:"created"\|"deduplicated", duplicateOf?}`                                                                   |
-| POST   | `/api/v1/ingest/webhooks/:sourceId`                     | HMAC (`X-Spine-Timestamp`, `X-Spine-Signature: sha256=<hex>` over `timestamp + "." + body`, ±5 min skew) | source-specific JSON (the source's configured normalizer, e.g. `suricata-eve`) | `202 IngestResult`; `401` on a bad signature                                                                                      |
-| POST   | `/api/v1/ingest/batch?format=ndjson\|cef\|suricata-eve` | A                                                                                                        | `text/plain` or `application/x-ndjson` body ≤ 10 MiB, one record per line      | `200 {accepted, deduplicated, rejected, errors:[{line, message}]}` (partial success is allowed, and per-line errors are reported) |
+| Method | Path                                                    | Auth                                                                                                     | Request                                                                                                                                                | Response                                                                                                 |
+| ------ | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| POST   | `/api/v1/alerts`                                        | A                                                                                                        | `CanonicalAlertInput`; optional `Idempotency-Key` header                                                                                               | `202 {alertId, status:"created"\|"deduplicated", duplicateOf?}`; a replay adds `Idempotent-Replay: true` |
+| POST   | `/api/v1/ingest/webhooks/:sourceId`                     | HMAC (`X-Spine-Timestamp`, `X-Spine-Signature: sha256=<hex>` over `timestamp + "." + body`, ±5 min skew) | the source's format, as sent (the HMAC covers the raw bytes): JSON for `suricata-eve`/`canonical`, one text line for `cef`; optional `Idempotency-Key` | `202 IngestResult`; `401` bad signature; `404` unknown source; `400` payload the normalizer rejects      |
+| POST   | `/api/v1/ingest/batch?format=ndjson\|cef\|suricata-eve` | A                                                                                                        | `text/plain` or `application/x-ndjson` body ≤ 10 MiB, one record per line                                                                              | `200 {accepted, deduplicated, rejected, skipped, errors:[{line, message}]}`                              |
 
-Back-pressure: all ingestion endpoints return `503` + `Retry-After` when the outbox backlog
-exceeds `INGEST_MAX_BACKLOG`. Idempotency-Key reuse with a different body returns `409`.
+Back-pressure: all ingestion endpoints return `503` + `Retry-After: 5` when the outbox backlog
+exceeds `INGEST_MAX_BACKLOG` ([ADR-0034](../adr/0034-ingest-backpressure-implementation.md)).
+Idempotency-Key reuse with a different body returns `409 idempotency-key-reused`; keys are
+scoped per user or per webhook source and expire after 24 h ([ADR-0033](../adr/0033-ingest-transaction-race-and-idempotency.md)).
+
+Batch counters (Phase 1 precision): `accepted` = lines that created a new alert,
+`deduplicated` = lines merged into an open alert, `rejected` = invalid lines (at most 100 are
+listed in `errors`, with 1-based line numbers), `skipped` = well-formed records that are not
+alerts (Suricata `flow`/`dns`… events). Blank lines are ignored. Each line is its own
+transaction, so a batch can partially succeed.
 
 ## Alerts & cases (module: alerts)
 
-| Method | Path                 | Auth | Request                                                                                                                     | Response                                                                                          |
-| ------ | -------------------- | ---- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------ | -------------------------------------------------- |
-| GET    | `/api/v1/alerts`     | V    | `?status&severity&minScore&maxScore&category&source&q&from&to&assignee&sort=receivedAt\|score&order=desc\|asc&cursor&limit` | `Page<AlertSummary>`                                                                              |
-| GET    | `/api/v1/alerts/:id` | V    | —                                                                                                                           | `AlertDetail` = alert + `enrichments[]` + `score` (ScoreExplanation\|null) + `runs[]` (summaries) |
-| PATCH  | `/api/v1/alerts/:id` | A    | `{status?, assigneeId?                                                                                                      | null, caseId?                                                                                     | null}`; status transitions validated | `200 AlertSummary`; `409` on an illegal transition |
-| GET    | `/api/v1/cases`      | V    | `?status&cursor&limit`                                                                                                      | `Page<Case>`                                                                                      |
-| POST   | `/api/v1/cases`      | A    | `{title, description?, alertIds[]}`                                                                                         | `201 Case`                                                                                        |
-| GET    | `/api/v1/cases/:id`  | V    | —                                                                                                                           | `Case` + linked alerts                                                                            |
-| PATCH  | `/api/v1/cases/:id`  | A    | `{status?, title?, description?, addAlertIds?, removeAlertIds?}`                                                            | `200 Case`                                                                                        |
+| Method | Path                 | Auth | Request                                                                                                                                 | Response                                                                                 |
+| ------ | -------------------- | ---- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| GET    | `/api/v1/alerts`     | V    | `?status&severity&minScore&maxScore&category&source&q&from&to&assigneeId&technique&sort=receivedAt\|score&order=desc\|asc&cursor&limit` | `Page<AlertSummary>`                                                                     |
+| GET    | `/api/v1/alerts/:id` | V    | —                                                                                                                                       | `AlertDetail` = `{summary, alert, enrichments[], score: ScoreExplanation\|null, runs[]}` |
+| PATCH  | `/api/v1/alerts/:id` | A    | `{status?, assigneeId?: id\|null, caseId?: id\|null}`; status transitions validated                                                     | `200 AlertSummary`; `409` illegal transition or reopen collision; `422` unknown case     |
+| GET    | `/api/v1/cases`      | V    | `?status&cursor&limit`                                                                                                                  | `Page<Case>` (newest first)                                                              |
+| POST   | `/api/v1/cases`      | A    | `{title, description?, alertIds[]}`                                                                                                     | `201 Case`; `422` unknown alert ids                                                      |
+| GET    | `/api/v1/cases/:id`  | V    | —                                                                                                                                       | `CaseDetail` = `Case` + `alerts: AlertSummary[]`                                         |
+| PATCH  | `/api/v1/cases/:id`  | A    | `{status?, title?, description?, addAlertIds?, removeAlertIds?}`                                                                        | `200 Case`                                                                               |
 
 Alert status machine: `new → triaged → in_progress → resolved | false_positive`. Any open
-state may go directly to `resolved` or `false_positive`. Closed alerts may be **reopened** to `in_progress`.
+state may go directly to `resolved` or `false_positive`. Closed alerts may be **reopened** to
+`in_progress`. Setting the status an alert already has is a no-op; `resolvedAt` is the first
+close and never moves ([ADR-0036](../adr/0036-alert-lifecycle-resolved-at.md)).
+
+List semantics ([ADR-0037](../adr/0037-alert-queue-query-semantics.md)): `severity` filters the
+_effective_ severity (scored severity, or the source's until scored); `source` matches vendor or
+product case-insensitively; `q` is a case-insensitive substring of the title; `technique=T1059`
+also matches its sub-techniques; `sort=score` puts unscored alerts last in both orders; a cursor
+only works with the sort it came from. An alert belongs to at most one case.
 
 ## Enrichment & scoring (modules: enrichment, scoring)
 
@@ -132,6 +148,7 @@ Conditions address the score as `score.score` and enrichment through a summary
 | `conflict`               | 409    | Illegal state transition, approval already decided                             |
 | `idempotency-key-reused` | 409    | Same key, different body                                                       |
 | `playbook-invalid`       | 422    | DSL validation failed                                                          |
+| `unprocessable`          | 422    | The body references something that doesn't exist (unknown case or alert ids)   |
 | `rate-limited`           | 429    | Too many requests (`Retry-After`)                                              |
 | `overloaded`             | 503    | Ingestion back-pressure (`Retry-After`)                                        |
 | `internal`               | 500    | Unexpected. Body contains only the `instance` request ID for log lookup        |

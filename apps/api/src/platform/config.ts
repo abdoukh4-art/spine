@@ -16,8 +16,8 @@ const csv = z.string().transform((v) =>
 );
 
 export const WebhookSourceSchema = z.object({
-  /** Normalizer used for this source's payloads. */
-  normalizer: z.enum(['canonical', 'suricata-eve', 'cef', 'generic']),
+  /** Normalizer used for this source's payloads (`generic` was removed in ADR-0030). */
+  normalizer: z.enum(['canonical', 'suricata-eve', 'cef']),
   /** HMAC-SHA256 shared secret (≥ 32 chars). */
   secret: z.string().min(32),
 });

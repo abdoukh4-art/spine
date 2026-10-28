@@ -61,6 +61,7 @@ erDiagram
         text source_severity
         int score "nullable until scored"
         text severity "derived from score"
+        timestamptz scored_at "computedAt of the projected score (ADR-0038)"
         timestamptz occurred_at
         timestamptz received_at
         timestamptz last_seen_at
@@ -69,7 +70,7 @@ erDiagram
         uuid assignee_id "logical → users"
         uuid case_id FK
         jsonb canonical "full CanonicalAlert"
-        text_arr mitre_technique_ids
+        text_arr mitre_technique_ids "incl. parents of sub-techniques (ADR-0037)"
         text_arr mitre_tactic_ids
         timestamptz updated_at
     }
@@ -210,7 +211,7 @@ erDiagram
 | `alerts (status)`, `(severity)` partial `WHERE status IN ('new','triaged','in_progress')` | Open-queue filters stay small                                                      |
 | `UNIQUE alerts (fingerprint) WHERE status NOT IN ('resolved','false_positive')`           | Race-safe deduplication ([ADR-0012](../adr/0012-idempotency-and-deduplication.md)) |
 | `alerts USING gin (title gin_trgm_ops)`                                                   | `?q=` free-text search                                                             |
-| `alerts USING gin (mitre_technique_ids)`                                                  | ATT&CK filtering                                                                   |
+| `alerts USING gin (mitre_technique_ids)`                                                  | ATT&CK filtering (`T1059` also matches `T1059.001`, ADR-0037)                      |
 | `domain_events (id) WHERE dispatched_at IS NULL`                                          | The outbox relay scans only undispatched rows                                      |
 | `playbook_runs (status) WHERE status NOT IN (terminal)`                                   | Startup reconciler finds runs to resume                                            |
 | `approvals (status, requested_at)`                                                        | Approval inbox                                                                     |
