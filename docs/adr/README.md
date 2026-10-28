@@ -42,3 +42,8 @@ in the same PR. CI checks that every ADR file appears in this index.
 | [0026](0026-mttd-mttr-definitions.md)                             | Precise definitions of MTTD, MTTR and playbook success rate                     | accepted | data                   |
 | [0027](0027-workspace-packages-as-source-and-esbuild-bundling.md) | Consume workspace packages as TS source; bundle the API with esbuild            | accepted | architecture, process  |
 | [0028](0028-security-patches-override-version-maturity.md)        | Security patches override the "mature version" rule (amends 0022)               | accepted | security, process      |
+| [0070](0070-console-api-client-validation-and-refresh.md)         | Console API client: validate every response, single-flight token refresh        | accepted | frontend, security     |
+| [0071](0071-console-in-browser-fake-api.md)                       | In-browser typed fake API for console tests and the standalone demo             | accepted | frontend, testing      |
+| [0072](0072-console-plain-css-with-prefixed-classes.md)           | Console styling: one plain-CSS file, `sp-` classes, design tokens               | accepted | frontend               |
+| [0073](0073-console-hand-built-svg-charts.md)                     | Hand-built accessible SVG bar charts, no chart library                          | accepted | frontend               |
+| [0074](0074-console-data-freshness-and-optimistic-updates.md)     | Console freshness: polling, URL filters, optimistic approvals with rollback     | accepted | frontend, architecture |
