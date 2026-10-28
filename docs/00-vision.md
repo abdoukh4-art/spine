@@ -17,12 +17,12 @@ Analysts lose most of their time on work that is **repetitive and mechanical**:
 6. Write down what they did so the next shift knows.
 
 This causes **alert fatigue**. Real incidents sit in the queue behind noise, the
-*Mean Time To Detect* (MTTD) and *Mean Time To Respond* (MTTR) both grow, and the
+_Mean Time To Detect_ (MTTD) and _Mean Time To Respond_ (MTTR) both grow, and the
 knowledge of how to handle each alert type stays in senior analysts' heads.
 
 **SOAR** (Security Orchestration, Automation and Response) platforms tackle this. They
-*orchestrate* tools behind one interface, *automate* the repetitive steps as
-**playbooks**, and keep a full record of every *response* for audit and learning.
+_orchestrate_ tools behind one interface, _automate_ the repetitive steps as
+**playbooks**, and keep a full record of every _response_ for audit and learning.
 
 ## 2. What Spine is
 
@@ -33,8 +33,8 @@ Spine is an **open-source, self-hostable, teaching-grade SOAR platform**. It:
   and idempotency;
 - **enriches** each alert's indicators through pluggable providers protected by timeouts,
   retries, circuit breakers and bulkheads;
-- **scores** each alert with a transparent, rule-based engine in which *every point of the
-  score can be explained*;
+- **scores** each alert with a transparent, rule-based engine in which _every point of the
+  score can be explained_;
 - **responds** by running versioned, validated **playbooks**: DAGs of steps with
   branching, approval gates, retries, compensation, dry-run mode and durable execution
   that survives crashes. Every response action goes through simulated adapters;
@@ -48,13 +48,13 @@ senses) and response tools (the limbs).
 
 ## 3. Users
 
-| Persona | Role in Spine | What they need |
-|---|---|---|
-| **Tier-1 SOC analyst** | `analyst` | A prioritized queue, enrichment already done, a score they can trust *because it's explained*, one-click approvals. |
-| **Tier-2/3 analyst / incident responder** | `analyst` | Playbook run timelines, case management, the ability to re-run with dry-run. |
-| **SOC lead / detection engineer** | `admin` | Author and version playbooks and scoring rules, see MTTD/MTTR trends, manage users. |
-| **Auditor / manager** | `viewer` | Read-only dashboards and an immutable audit trail. |
-| **Learner** (secondary, but first-class) | — | Readable code, ADRs, tutorials, exercises. |
+| Persona                                   | Role in Spine | What they need                                                                                                      |
+| ----------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Tier-1 SOC analyst**                    | `analyst`     | A prioritized queue, enrichment already done, a score they can trust _because it's explained_, one-click approvals. |
+| **Tier-2/3 analyst / incident responder** | `analyst`     | Playbook run timelines, case management, the ability to re-run with dry-run.                                        |
+| **SOC lead / detection engineer**         | `admin`       | Author and version playbooks and scoring rules, see MTTD/MTTR trends, manage users.                                 |
+| **Auditor / manager**                     | `viewer`      | Read-only dashboards and an immutable audit trail.                                                                  |
+| **Learner** (secondary, but first-class)  | —             | Readable code, ADRs, tutorials, exercises.                                                                          |
 
 ## 4. Goals
 
@@ -73,7 +73,7 @@ senses) and response tools (the limbs).
 ## 5. Non-goals (explicit)
 
 - **Not a SIEM.** Spine does not store or search raw logs at scale, and it does not run
-  correlation rules over event streams. It consumes *alerts* that a SIEM or EDR produced.
+  correlation rules over event streams. It consumes _alerts_ that a SIEM or EDR produced.
 - **No real response actions.** Firewall, ticketing and chat integrations are
   **simulated**. Spine never ships offensive or destructive capability.
 - **No real third-party API calls.** Enrichment providers are mocks driven by fixtures,
@@ -85,16 +85,16 @@ senses) and response tools (the limbs).
 
 ## 6. Success metrics
 
-| # | Metric | Target for v0.1 | How it is measured |
-|---|---|---|---|
-| S1 | End-to-end demo works from a clean clone | `make demo` completes with no manual steps | CI job + manual check |
-| S2 | Ingest → scored latency (p95, local) | < 500 ms with mock enrichers | k6 load test ([docs/operations/performance.md](operations/performance.md)) |
-| S3 | Ingestion throughput (single API instance) | ≥ 200 alerts/s sustained with back-pressure, no errors | k6 |
-| S4 | Domain + playbook-engine test coverage | ≥ 85 % lines | Vitest coverage report in CI |
-| S5 | Score explainability | 100 % of scores have ≥ 1 factor or an explicit "no rules matched" factor | property-based test |
-| S6 | Playbook durability | A run killed mid-step resumes and never repeats a completed action | integration test |
-| S7 | Security hygiene | 0 high/critical findings from CodeQL, Trivy, npm audit at release | CI security workflow |
-| S8 | Learnability | Every ADR has "options considered" and "revisit when"; every module has exercises | docs lint + review |
+| #   | Metric                                     | Target for v0.1                                                                   | How it is measured                                                         |
+| --- | ------------------------------------------ | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| S1  | End-to-end demo works from a clean clone   | `make demo` completes with no manual steps                                        | CI job + manual check                                                      |
+| S2  | Ingest → scored latency (p95, local)       | < 500 ms with mock enrichers                                                      | k6 load test ([docs/operations/performance.md](operations/performance.md)) |
+| S3  | Ingestion throughput (single API instance) | ≥ 200 alerts/s sustained with back-pressure, no errors                            | k6                                                                         |
+| S4  | Domain + playbook-engine test coverage     | ≥ 85 % lines                                                                      | Vitest coverage report in CI                                               |
+| S5  | Score explainability                       | 100 % of scores have ≥ 1 factor or an explicit "no rules matched" factor          | property-based test                                                        |
+| S6  | Playbook durability                        | A run killed mid-step resumes and never repeats a completed action                | integration test                                                           |
+| S7  | Security hygiene                           | 0 high/critical findings from CodeQL, Trivy, npm audit at release                 | CI security workflow                                                       |
+| S8  | Learnability                               | Every ADR has "options considered" and "revisit when"; every module has exercises | docs lint + review                                                         |
 
 ## 7. Guiding principles
 

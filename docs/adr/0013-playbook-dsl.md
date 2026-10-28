@@ -37,7 +37,14 @@ kind: Playbook
 metadata: { id: malware-containment, name: Malware containment, version: 3 }
 trigger:
   event: alert.scored
-  when: { all: [ { field: alert.category, op: eq, value: malware }, { field: score.value, op: gte, value: 60 } ] }
+  when:
+    {
+      all:
+        [
+          { field: alert.category, op: eq, value: malware },
+          { field: score.value, op: gte, value: 60 },
+        ],
+    }
 start: enrich
 steps:
   - id: enrich
@@ -51,7 +58,13 @@ steps:
     default: notify
   - id: approve-block
     type: approval
-    with: { approverRole: analyst, prompt: "Block {{alert.indicators}} on the perimeter firewall?", timeoutMs: 3600000, onTimeout: reject }
+    with:
+      {
+        approverRole: analyst,
+        prompt: 'Block {{alert.indicators}} on the perimeter firewall?',
+        timeoutMs: 3600000,
+        onTimeout: reject,
+      }
     next: block
     onReject: notify
   - id: block
@@ -67,7 +80,8 @@ steps:
     next: notify
   - id: notify
     type: notify
-    with: { channel: "#soc-alerts", template: "Alert {{alert.title}} handled by {{run.playbookId}}" }
+    with:
+      { channel: '#soc-alerts', template: 'Alert {{alert.title}} handled by {{run.playbookId}}' }
 ```
 
 - **Conditions** form a tiny, closed predicate language: `{all:[…]}`, `{any:[…]}`, `{not:…}`
@@ -96,17 +110,20 @@ steps:
 ## Pros and cons of the options
 
 ### Playbooks as code
+
 - 👍 Unlimited power and type safety.
 - 👎 Every change needs a deploy, analysts can't author them, and they're impossible to validate generically.
 
 ### Embedded JS expressions
+
 - 👍 Familiar syntax.
 - 👎 `vm` is explicitly **not a security boundary** (per the Node docs). It's a sandbox-escape risk,
   and expressions can hang (`while(true)`).
 
 ### Visual builder
+
 - 👍 Friendly UX.
-- 👎 Opaque JSON, poor diffs. It can be added *on top of* this DSL later.
+- 👎 Opaque JSON, poor diffs. It can be added _on top of_ this DSL later.
 
 ## What would make us revisit this
 
@@ -116,6 +133,6 @@ steps:
 
 ## Further reading
 
-- Node.js docs, *vm: "The vm module is not a security mechanism"*
-- Google, *Common Expression Language (CEL)* spec
-- OWASP, *Regular expression Denial of Service (ReDoS)*
+- Node.js docs, _vm: "The vm module is not a security mechanism"_
+- Google, _Common Expression Language (CEL)_ spec
+- OWASP, _Regular expression Denial of Service (ReDoS)_

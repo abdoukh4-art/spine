@@ -1,0 +1,114 @@
+/*
+ * Design tokens (ADR-0023). Every colour pair used for text is checked for >= 4.5:1
+ * contrast (WCAG 2.2 AA) in both themes. Severity is never conveyed by colour alone:
+ * badges always carry text, too.
+ */
+:root {
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --radius: 6px;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+
+  --bg: #f7f8fa;
+  --surface: #ffffff;
+  --surface-2: #eef1f5;
+  --border: #d4dae3;
+  --text: #17202c;
+  --text-muted: #4a5568;
+  --accent: #1d4ed8;
+  --accent-text: #ffffff;
+  --focus: #b45309;
+  --danger: #b91c1c;
+
+  --sev-critical-bg: #7f1d1d;
+  --sev-critical-fg: #ffffff;
+  --sev-high-bg: #c2410c;
+  --sev-high-fg: #ffffff;
+  --sev-medium-bg: #fde68a;
+  --sev-medium-fg: #3f2a00;
+  --sev-low-bg: #dbeafe;
+  --sev-low-fg: #1e3a8a;
+  --sev-info-bg: #e5e7eb;
+  --sev-info-fg: #1f2937;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0f141b;
+    --surface: #171e27;
+    --surface-2: #1f2834;
+    --border: #334155;
+    --text: #e6ebf2;
+    --text-muted: #a5b1c2;
+    --accent: #7aa2ff;
+    --accent-text: #0b1020;
+    --focus: #fbbf24;
+    --danger: #f87171;
+    --sev-medium-bg: #a16207;
+    --sev-medium-fg: #ffffff;
+    --sev-low-bg: #1e3a8a;
+    --sev-low-fg: #dbeafe;
+    --sev-info-bg: #374151;
+    --sev-info-fg: #f3f4f6;
+  }
+}
+:root[data-theme='dark'] {
+  --bg: #0f141b;
+  --surface: #171e27;
+  --surface-2: #1f2834;
+  --border: #334155;
+  --text: #e6ebf2;
+  --text-muted: #a5b1c2;
+  --accent: #7aa2ff;
+  --accent-text: #0b1020;
+  --focus: #fbbf24;
+  --danger: #f87171;
+  --sev-medium-bg: #a16207;
+  --sev-medium-fg: #ffffff;
+  --sev-low-bg: #1e3a8a;
+  --sev-low-fg: #dbeafe;
+  --sev-info-bg: #374151;
+  --sev-info-fg: #f3f4f6;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: 1.5;
+}
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

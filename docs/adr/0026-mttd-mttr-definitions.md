@@ -27,20 +27,20 @@ compared. A metric with no precise definition can't be tested, and it gets gamed
 
 **Chosen option 1.** For a time window `[from, to)` over alerts whose `receivedAt` falls in the window:
 
-| Metric | Definition | Timestamps |
-|---|---|---|
-| **TTD** (per alert) | `receivedAt − occurredAt` = how long the malicious activity existed before Spine knew about it (detection + delivery latency) | `occurredAt` from the source event, `receivedAt` set by Spine at ingestion |
-| **MTTD** | mean of TTD over alerts in window (negative values from clock skew are clamped to 0 and counted in `clockSkewCount`) | |
-| **TTR** (per alert) | `resolvedAt − receivedAt`, where `resolvedAt` is the first transition to `resolved` **or** `false_positive` | `resolvedAt` set by the Alerts module |
-| **MTTR** | mean of TTR over alerts in the window **that are closed**; `openCount` reported alongside | |
-| **Playbook success rate** | `succeeded / (succeeded + failed + compensated)` over runs **finished** in the window; `dry-run` runs excluded; `cancelled` excluded | |
-| **Playbook latency** | p50/p95 of `finishedAt − startedAt` for finished, non-dry-run runs, **excluding time spent waiting for approval** (reported separately) | |
+| Metric                    | Definition                                                                                                                              | Timestamps                                                                 |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| **TTD** (per alert)       | `receivedAt − occurredAt` = how long the malicious activity existed before Spine knew about it (detection + delivery latency)           | `occurredAt` from the source event, `receivedAt` set by Spine at ingestion |
+| **MTTD**                  | mean of TTD over alerts in window (negative values from clock skew are clamped to 0 and counted in `clockSkewCount`)                    |                                                                            |
+| **TTR** (per alert)       | `resolvedAt − receivedAt`, where `resolvedAt` is the first transition to `resolved` **or** `false_positive`                             | `resolvedAt` set by the Alerts module                                      |
+| **MTTR**                  | mean of TTR over alerts in the window **that are closed**; `openCount` reported alongside                                               |                                                                            |
+| **Playbook success rate** | `succeeded / (succeeded + failed + compensated)` over runs **finished** in the window; `dry-run` runs excluded; `cancelled` excluded    |                                                                            |
+| **Playbook latency**      | p50/p95 of `finishedAt − startedAt` for finished, non-dry-run runs, **excluding time spent waiting for approval** (reported separately) |                                                                            |
 
 Every metric response includes `count`, `mean`, `p50`, `p90` and the window. Percentiles use
 the **nearest-rank** method (documented, so tests are exact).
 
 Deduplicated occurrences do not create new alerts, so they don't count toward MTTD. This
-is deliberate: MTTD measures detection of *distinct* alerts.
+is deliberate: MTTD measures detection of _distinct_ alerts.
 
 ### Consequences
 
@@ -56,5 +56,5 @@ is deliberate: MTTD measures detection of *distinct* alerts.
 
 ## Further reading
 
-- Google SRE Workbook, *Implementing SLOs* (on percentiles vs means)
-- SANS, *SOC Survey* (variation in how SOCs measure MTTD/MTTR)
+- Google SRE Workbook, _Implementing SLOs_ (on percentiles vs means)
+- SANS, _SOC Survey_ (variation in how SOCs measure MTTD/MTTR)

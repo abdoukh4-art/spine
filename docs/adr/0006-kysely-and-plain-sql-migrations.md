@@ -9,7 +9,7 @@
 
 Adapters need type-safe access to PostgreSQL. The mission allowed "Drizzle ORM or
 Kysely". Persistence code must stay inside adapters, and domain objects must **not** be
-ORM entities (a hexagonal anti-pattern: *domain as ORM entity*).
+ORM entities (a hexagonal anti-pattern: _domain as ORM entity_).
 
 ## Decision drivers
 
@@ -52,16 +52,19 @@ ORM entities (a hexagonal anti-pattern: *domain as ORM entity*).
 ## Pros and cons of the options
 
 ### Drizzle
+
 - 👍 Good TS DX, and schema-as-code generates migrations.
 - 👎 The schema-in-TS becomes the source of truth for tables, which tempts developers to
   use table objects as domain entities. Generated migrations hide the DDL from the reviewer.
 
 ### Prisma
+
 - 👍 Mature, great tooling.
 - 👎 A separate schema language and a heavy engine. Raw Postgres features (SKIP LOCKED,
   partial indexes) are second-class. Its model types leak into domain code easily.
 
 ### Raw `pg`
+
 - 👍 Zero abstraction.
 - 👎 No type safety on columns, and it's easy to make SQL-injection mistakes with string building.
 
@@ -73,5 +76,5 @@ ORM entities (a hexagonal anti-pattern: *domain as ORM entity*).
 
 ## Further reading
 
-- Kysely docs, *Getting started* and *Transactions*
-- Martin Fowler, *Evolutionary Database Design*
+- Kysely docs, _Getting started_ and _Transactions_
+- Martin Fowler, _Evolutionary Database Design_

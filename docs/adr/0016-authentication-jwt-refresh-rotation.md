@@ -68,14 +68,17 @@ high impact. Every mutating action must be attributable to a person (an audit re
 ## Pros and cons of the options
 
 ### Server-side sessions
+
 - 👍 Simple and instantly revocable.
 - 👎 A store lookup on every request. Equally valid; we chose JWT partly because the target
   job market expects JWT literacy, and rotation plus reuse detection teaches more.
 
 ### JWT in localStorage
+
 - 👎 Readable by any XSS. An anti-pattern.
 
 ### External IdP
+
 - 👍 SSO, MFA and enterprise-grade features.
 - 👎 Not offline-friendly for the demo. It's the recommended production path, listed in the roadmap.
 
@@ -86,6 +89,6 @@ high impact. Every mutating action must be attributable to a person (an audit re
 
 ## Further reading
 
-- OWASP ASVS 4.0, V2/V3; OWASP *Password Storage Cheat Sheet*
-- Auth0 blog, *Refresh Token Rotation*
-- RFC 8725, *JSON Web Token Best Current Practices*
+- OWASP ASVS 4.0, V2/V3; OWASP _Password Storage Cheat Sheet_
+- Auth0 blog, _Refresh Token Rotation_
+- RFC 8725, _JSON Web Token Best Current Practices_

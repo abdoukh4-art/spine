@@ -201,35 +201,35 @@ erDiagram
 
 ## Key indexes and why
 
-| Index | Why |
-|---|---|
-| `alerts (received_at DESC, id DESC)` | Default queue order + keyset pagination |
-| `alerts (score DESC NULLS LAST, id DESC)` | "Highest risk first" sort |
-| `alerts (status)`, `(severity)` partial `WHERE status IN ('new','triaged','in_progress')` | Open-queue filters stay small |
-| `UNIQUE alerts (fingerprint) WHERE status NOT IN ('resolved','false_positive')` | Race-safe deduplication ([ADR-0012](../adr/0012-idempotency-and-deduplication.md)) |
-| `alerts USING gin (title gin_trgm_ops)` | `?q=` free-text search |
-| `alerts USING gin (mitre_technique_ids)` | ATT&CK filtering |
-| `domain_events (id) WHERE dispatched_at IS NULL` | The outbox relay scans only undispatched rows |
-| `playbook_runs (status) WHERE status NOT IN (terminal)` | Startup reconciler finds runs to resume |
-| `approvals (status, requested_at)` | Approval inbox |
-| `refresh_tokens (family_id)` | Revoke a whole family on reuse |
-| `audit_log (occurred_at DESC)`, `(actor_id, occurred_at DESC)` | Audit queries |
+| Index                                                                                     | Why                                                                                |
+| ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `alerts (received_at DESC, id DESC)`                                                      | Default queue order + keyset pagination                                            |
+| `alerts (score DESC NULLS LAST, id DESC)`                                                 | "Highest risk first" sort                                                          |
+| `alerts (status)`, `(severity)` partial `WHERE status IN ('new','triaged','in_progress')` | Open-queue filters stay small                                                      |
+| `UNIQUE alerts (fingerprint) WHERE status NOT IN ('resolved','false_positive')`           | Race-safe deduplication ([ADR-0012](../adr/0012-idempotency-and-deduplication.md)) |
+| `alerts USING gin (title gin_trgm_ops)`                                                   | `?q=` free-text search                                                             |
+| `alerts USING gin (mitre_technique_ids)`                                                  | ATT&CK filtering                                                                   |
+| `domain_events (id) WHERE dispatched_at IS NULL`                                          | The outbox relay scans only undispatched rows                                      |
+| `playbook_runs (status) WHERE status NOT IN (terminal)`                                   | Startup reconciler finds runs to resume                                            |
+| `approvals (status, requested_at)`                                                        | Approval inbox                                                                     |
+| `refresh_tokens (family_id)`                                                              | Revoke a whole family on reuse                                                     |
+| `audit_log (occurred_at DESC)`, `(actor_id, occurred_at DESC)`                            | Audit queries                                                                      |
 
 ## Mapping to ECS / OCSF
 
-| Spine `CanonicalAlert` | ECS | OCSF (Detection Finding) |
-|---|---|---|
-| `source.vendor` / `source.product` | `observer.vendor` / `observer.product` | `metadata.product.vendor_name` / `.name` |
-| `source.sourceAlertId` | `event.id` | `finding_info.uid` |
-| `title` | `rule.name` / `message` | `finding_info.title` |
-| `category` | `event.category` | `category_uid` / `finding_info.types` |
-| `severity` | `event.severity` (numeric) | `severity_id` |
-| `occurredAt` | `@timestamp` | `time` |
-| `host.hostname`, `host.ips` | `host.hostname`, `host.ip` | `device.hostname`, `device.ip` |
-| `user.name`, `user.email` | `user.name`, `user.email` | `actor.user.name`, `.email_addr` |
-| `network.sourceIp` / `destinationIp` | `source.ip` / `destination.ip` | `src_endpoint.ip` / `dst_endpoint.ip` |
-| `file.sha256` | `file.hash.sha256` | `file.hashes[]` |
-| `url` | `url.full` | `url.url_string` |
-| `mitre[]` | `threat.technique.id`, `threat.tactic.id` | `attacks[]` |
-| `indicators[]` | `threat.indicator.*` | `observables[]` |
-| `labels` | `labels` | `unmapped` |
+| Spine `CanonicalAlert`               | ECS                                       | OCSF (Detection Finding)                 |
+| ------------------------------------ | ----------------------------------------- | ---------------------------------------- |
+| `source.vendor` / `source.product`   | `observer.vendor` / `observer.product`    | `metadata.product.vendor_name` / `.name` |
+| `source.sourceAlertId`               | `event.id`                                | `finding_info.uid`                       |
+| `title`                              | `rule.name` / `message`                   | `finding_info.title`                     |
+| `category`                           | `event.category`                          | `category_uid` / `finding_info.types`    |
+| `severity`                           | `event.severity` (numeric)                | `severity_id`                            |
+| `occurredAt`                         | `@timestamp`                              | `time`                                   |
+| `host.hostname`, `host.ips`          | `host.hostname`, `host.ip`                | `device.hostname`, `device.ip`           |
+| `user.name`, `user.email`            | `user.name`, `user.email`                 | `actor.user.name`, `.email_addr`         |
+| `network.sourceIp` / `destinationIp` | `source.ip` / `destination.ip`            | `src_endpoint.ip` / `dst_endpoint.ip`    |
+| `file.sha256`                        | `file.hash.sha256`                        | `file.hashes[]`                          |
+| `url`                                | `url.full`                                | `url.url_string`                         |
+| `mitre[]`                            | `threat.technique.id`, `threat.tactic.id` | `attacks[]`                              |
+| `indicators[]`                       | `threat.indicator.*`                      | `observables[]`                          |
+| `labels`                             | `labels`                                  | `unmapped`                               |

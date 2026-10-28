@@ -52,10 +52,12 @@ and a definition of "mergeable" that a machine enforces.
 ## Pros and cons of the options
 
 ### Trunk-based
+
 - 👍 The fastest integration, and favoured by DORA research.
 - 👎 Needs feature flags and very mature CI from day one. The mission specifies develop + release PR.
 
 ### Full git-flow
+
 - 👎 Release/hotfix branches are ceremony with no benefit for a single-deployable project.
 
 ## What would make us revisit this
@@ -66,5 +68,5 @@ and a definition of "mergeable" that a machine enforces.
 ## Further reading
 
 - Conventional Commits 1.0.0 specification
-- *Accelerate*, Forsgren, Humble, Kim (2018): trunk-based development findings
+- _Accelerate_, Forsgren, Humble, Kim (2018): trunk-based development findings
 - release-please documentation
