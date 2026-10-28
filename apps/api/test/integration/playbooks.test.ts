@@ -155,6 +155,10 @@ describe('approval gates', () => {
     expect(h.audits.at(-1)).toMatchObject({ action: 'approval.decided', targetId: approvalId });
     const lastSeq = (await h.pb.runs.detail(runId)).events.length;
     expect(h.queue.jobs).toContainEqual({ runId, seq: lastSeq });
+    // The outbox path (approval.decided → resume subscriber) enqueues the same job again.
+    const before = h.queue.jobs.length;
+    await h.drainOutbox();
+    expect(h.queue.jobs.slice(before)).toContainEqual({ runId, seq: lastSeq });
 
     expect((await h.run(runId)).outcome).toEqual({ kind: 'terminal', status: 'succeeded' });
     expect((await actions(runId)).map((a) => a.kind)).toEqual([
