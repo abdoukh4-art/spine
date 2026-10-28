@@ -63,7 +63,25 @@ export function createApplication(
   const ingestion = createIngestionModule(deps);
   const enrichment = createEnrichmentModule(deps);
   const scoring = createScoringModule(deps);
-  const playbooks = createPlaybooksModule(deps);
+  const playbooks = createPlaybooksModule(deps, {
+    // INTEGRATION: replace with enrichment public API (enrichAlert) in Phase 2.
+    enrichment: { enrich: () => Promise.resolve([]) },
+    // INTEGRATION: replace with scoring public API (scoreAndStore / preview when !persist) in Phase 2.
+    scoring: { score: () => Promise.resolve(null) },
+    // INTEGRATION: replace with alerts public API (setStatus, mapping ConflictError to changed:false) in Phase 2.
+    alertStatus: {
+      setStatus: () => Promise.resolve({ changed: false, reason: 'alerts module not wired yet' }),
+    },
+    // INTEGRATION: replace with alerts.get + enrichment.getForAlert + scoring.getForAlert in Phase 2.
+    alertSnapshot: { get: () => Promise.resolve(null) },
+    // INTEGRATION: replace with auth public API (audit.record) in Phase 2.
+    audit: {
+      record: (entry) => {
+        logger.info({ audit: entry }, 'audit (placeholder until auth is wired)');
+        return Promise.resolve();
+      },
+    },
+  });
   const metrics = createMetricsModule(deps);
 
   const modules = [auth, alerts, ingestion, enrichment, scoring, playbooks, metrics].map(

@@ -69,6 +69,7 @@ const ConfigSchema = z.object({
   OUTBOX_BATCH_SIZE: z.coerce.number().int().min(1).max(1000).default(100),
   EVENT_WORKER_CONCURRENCY: z.coerce.number().int().min(1).default(8),
   PLAYBOOK_WORKER_CONCURRENCY: z.coerce.number().int().min(1).default(4),
+  PLAYBOOK_APPROVAL_SWEEP_INTERVAL_MS: z.coerce.number().int().min(1000).default(30_000),
 
   METRICS_PORT: z.coerce.number().int().min(0).max(65535).default(9464),
   OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
