@@ -214,6 +214,7 @@ erDiagram
 | `approvals (status, requested_at)`                                                        | Approval inbox                                                                     |
 | `refresh_tokens (family_id)`                                                              | Revoke a whole family on reuse                                                     |
 | `audit_log (occurred_at DESC)`, `(actor_id, occurred_at DESC)`                            | Audit queries                                                                      |
+| `audit_log (action text_pattern_ops, id DESC)` (migration `0101`)                         | `GET /audit-log?action=<prefix>` filter                                            |
 
 ## Mapping to ECS / OCSF
 
