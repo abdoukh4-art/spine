@@ -33,7 +33,7 @@ const REFANG_RULES: readonly (readonly [RegExp, string])[] = [
 
 /**
  * Re-arms a defanged value (`hxxps://evil[.]example` → `https://evil.example`). Applied until
- * nothing changes, because one replacement can reveal another (`[[.].]` → `[.]` → `.`); without
+ * nothing changes, because one replacement can reveal another (`[(.)]` → `[.]` → `.`); without
  * the loop the function would not be idempotent.
  */
 export function refang(value: string): string {
