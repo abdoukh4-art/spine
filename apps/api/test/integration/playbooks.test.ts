@@ -101,6 +101,38 @@ describe('automatic runs from alert.scored', () => {
   });
 });
 
+describe('seeding', () => {
+  it('skips invalid playbook files, reports them, and never re-inserts stored versions', async () => {
+    const result = await h.pb.catalog.seed([
+      { name: 'broken.yaml', source: 'apiVersion: [', format: 'yaml' },
+      {
+        name: 'again.json',
+        source: JSON.stringify(
+          playbook('seed-demo', [
+            { id: 'a', type: 'notify', with: { channel: '#c', template: 'x' } },
+          ]),
+        ),
+        format: 'json',
+      },
+    ]);
+    expect(result.invalid).toHaveLength(1);
+    expect(result.invalid[0]).toMatch(/^broken\.yaml: /);
+    expect(result.inserted).toEqual(['seed-demo@1']);
+    const again = await h.pb.catalog.seed([
+      {
+        name: 'again.json',
+        source: JSON.stringify(
+          playbook('seed-demo', [
+            { id: 'a', type: 'notify', with: { channel: '#c', template: 'x' } },
+          ]),
+        ),
+        format: 'json',
+      },
+    ]);
+    expect(again.inserted).toEqual([]);
+  });
+});
+
 describe('approval gates', () => {
   async function waitingMalwareRun(): Promise<{ runId: string; approvalId: string }> {
     const snapshot = h.alert({ category: 'malware', score: 92 });
