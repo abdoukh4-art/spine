@@ -5,7 +5,7 @@ import { ForbiddenError, UnauthenticatedError } from '../errors.js';
 /**
  * Access control at the HTTP edge (ADR-0017).
  *
- * Every route MUST declare `config.access`. A global preHandler enforces it, and a test
+ * Every route MUST declare `config.access`. A global onRequest hook enforces it, and a test
  * walks all routes to assert none is missing (deny-by-default). Policies:
  * - `'public'`               — no authentication (health, login, refresh).
  * - `{ role: 'viewer' | 'analyst' | 'admin' }` — authenticated user with at least that role.
@@ -45,10 +45,14 @@ function bearerToken(request: FastifyRequest): string | null {
   return scheme?.toLowerCase() === 'bearer' && token ? token : null;
 }
 
-/** Registers the global access-control preHandler. */
+/**
+ * Registers the global access-control hook. It runs in `onRequest`, i.e. BEFORE the body is
+ * parsed and validated: an anonymous caller gets 401/403, never a 400 that reveals the
+ * request schema, and we never spend CPU parsing bodies for callers who may not send them.
+ */
 export function registerAccessControl(app: FastifyInstance, authenticator: Authenticator): void {
   app.decorateRequest('principal', null);
-  app.addHook('preHandler', async (request) => {
+  app.addHook('onRequest', async (request) => {
     // Unmatched routes (404) have no config; let the not-found handler respond.
     if (!request.routeOptions.url) return;
     const access = request.routeOptions.config.access;
@@ -59,10 +63,12 @@ export function registerAccessControl(app: FastifyInstance, authenticator: Authe
     const token = bearerToken(request);
     if (!token) throw new UnauthenticatedError('missing bearer token');
     const principal = await authenticator.authenticate(token);
+    // Set BEFORE the role check so a 403 is attributable in the audit log (who tried?).
+    // Safe: on 403 no handler runs, so the principal is only ever read by onResponse hooks.
+    request.principal = principal;
     if (!roleSatisfies(principal.role, access.role)) {
       throw new ForbiddenError(`requires role ${access.role}`);
     }
-    request.principal = principal;
   });
 }
 

@@ -48,3 +48,11 @@ in the same PR. CI checks that every ADR file appears in this index.
 | [0053](0053-run-snapshot-and-evaluation-context.md)               | Runs carry an alert snapshot; conditions see an enrichment summary              | accepted | architecture, data     |
 | [0054](0054-locked-down-playbook-source-parsing.md)               | Locked-down YAML/JSON parsing for playbook sources                              | accepted | security               |
 | [0055](0055-run-projection-and-outbox-in-append-transaction.md)   | Rebuild the run projection and emit domain events inside every append           | accepted | data, architecture     |
+| [0060](0060-authenticator-reloads-user-with-short-cache.md)       | Authenticator reloads the user per request (≤ 30 s cache)                       | accepted | security, architecture |
+| [0061](0061-csrf-origin-required-in-every-environment.md)         | CSRF: custom header + allow-listed Origin in every environment                  | accepted | security               |
+| [0062](0062-strict-refresh-rotation-under-row-lock.md)            | Strict refresh rotation under a row lock, no grace window                       | accepted | security, data         |
+| [0063](0063-two-dimensional-login-throttle.md)                    | Two-dimensional login throttle (Redis fixed window, in-memory fallback)         | accepted | security, architecture |
+| [0064](0064-audit-log-write-policy.md)                            | Audit write policy: best-effort HTTP trail, no bodies, hashed emails            | accepted | security, data         |
+| [0065](0065-last-active-admin-protection.md)                      | Always keep at least one active admin                                           | accepted | security, data         |
+| [0066](0066-first-run-admin-bootstrap.md)                         | First-run admin bootstrap from env, only on an empty users table                | accepted | security, ops          |
+| [0067](0067-authorize-before-body-parsing.md)                     | Authorize in onRequest and attribute forbidden requests                         | accepted | security, architecture |

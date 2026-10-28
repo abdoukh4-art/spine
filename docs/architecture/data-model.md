@@ -219,6 +219,7 @@ erDiagram
 | sequence `simulated_ticket_seq` (0601)                                                    | `SIM-<n>` ticket numbers of the simulated ticketing adapter                        |
 | `refresh_tokens (family_id)`                                                              | Revoke a whole family on reuse                                                     |
 | `audit_log (occurred_at DESC)`, `(actor_id, occurred_at DESC)`                            | Audit queries                                                                      |
+| `audit_log (action text_pattern_ops, id DESC)` (migration `0101`)                         | `GET /audit-log?action=<prefix>` filter                                            |
 
 ## Mapping to ECS / OCSF
 
