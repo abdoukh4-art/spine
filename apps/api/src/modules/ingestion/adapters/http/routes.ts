@@ -221,7 +221,10 @@ function registerWebhookRoute(
       // Same problem body as an unmatched route: the response doesn't list or hint at sources.
       if (!source) throw new NotFoundError('Webhook source', sourceId);
       authenticateWebhook(req, req.body, source, deps, sourceId);
-      const key = idempotencyKey(req);
+      // Replay defence (security review F3): without an explicit Idempotency-Key, the verified
+      // signature is the key. It binds timestamp + body, so an exact replay within the ±5 min
+      // window gets the stored response and changes nothing (no duplicate count, no score bump).
+      const key = idempotencyKey(req) ?? signatureIdempotencyKey(req);
       const metricSource = `webhook:${sourceId}`;
       const normalized = NORMALIZERS[source.normalizer](req.body, {
         receivedAt: deps.clock.now().toISOString(),
@@ -254,6 +257,12 @@ function registerWebhookRoute(
 function header(req: FastifyRequest, name: string): string | undefined {
   const value = req.headers[name];
   return typeof value === 'string' ? value : undefined;
+}
+
+/** `sig-<hex>` from a (by now verified) `X-Spine-Signature` header. */
+function signatureIdempotencyKey(req: FastifyRequest): string | undefined {
+  const m = /^sha256=([0-9a-fA-F]{64})$/.exec(header(req, 'x-spine-signature')?.trim() ?? '');
+  return m?.[1] ? `sig-${m[1].toLowerCase()}` : undefined;
 }
 
 function authenticateWebhook(

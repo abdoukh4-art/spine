@@ -2,6 +2,7 @@
 
 - [Threat model (STRIDE per component)](threat-model.md)
 - [RBAC permission matrix](rbac.md)
+- [Security review 2026-10-28 (adversarial pass, findings F1–F7)](review-2026-10-28.md)
 - [OWASP Top 10 mapping](owasp-top10.md)
 - [Security policy / how to report a vulnerability](../../SECURITY.md)
 - ADRs: [0016 authentication](../adr/0016-authentication-jwt-refresh-rotation.md),

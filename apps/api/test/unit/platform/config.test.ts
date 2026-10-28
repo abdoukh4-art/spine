@@ -52,9 +52,46 @@ describe('loadConfig', () => {
   it('enables API docs outside production by default', () => {
     expect(apiDocsEnabled(testConfig())).toBe(true);
     expect(
-      apiDocsEnabled(testConfig({ NODE_ENV: 'production', AUTH_JWT_SECRET: 'a'.repeat(40) })),
+      apiDocsEnabled(
+        testConfig({
+          NODE_ENV: 'production',
+          AUTH_JWT_SECRET: 'a'.repeat(40),
+          COOKIE_SECURE: 'true',
+        }),
+      ),
     ).toBe(false);
     expect(apiDocsEnabled(testConfig({ ENABLE_API_DOCS: 'false' }))).toBe(false);
+  });
+});
+
+describe('production safety rails (security review F1)', () => {
+  const prod = { NODE_ENV: 'production', AUTH_JWT_SECRET: 'r'.repeat(48), COOKIE_SECURE: 'true' };
+  it('refuses the public placeholder webhook secrets from .env.example', () => {
+    expect(() =>
+      testConfig({
+        ...prod,
+        WEBHOOK_SOURCES_JSON: JSON.stringify({
+          edr: {
+            normalizer: 'canonical',
+            secret: 'dev-only-insecure-webhook-secret-edr-000000001',
+          },
+        }),
+      }),
+    ).toThrow(/placeholder secret for source\(s\) edr/);
+  });
+  it('refuses insecure refresh cookies', () => {
+    expect(() => testConfig({ ...prod, COOKIE_SECURE: 'false' })).toThrow(
+      /COOKIE_SECURE must be true/,
+    );
+  });
+  it('accepts a production config with real secrets', () => {
+    const c = testConfig({
+      ...prod,
+      WEBHOOK_SOURCES_JSON: JSON.stringify({
+        edr: { normalizer: 'canonical', secret: 'k'.repeat(48) },
+      }),
+    });
+    expect(c.WEBHOOK_SOURCES_JSON.edr?.normalizer).toBe('canonical');
   });
 });
 

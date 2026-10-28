@@ -155,6 +155,12 @@ function buildHistory(now: Date): HistoryEntry[] {
 
 async function main(): Promise<void> {
   const config = loadConfig();
+  // Security review F2: demo users have published passwords; never create them in production.
+  if (config.NODE_ENV === 'production' && process.env.SPINE_ALLOW_DEMO_SEED !== 'true') {
+    throw new Error(
+      'seed: refusing to create demo users in production (set SPINE_ALLOW_DEMO_SEED=true to override)',
+    );
+  }
   const logger = createLogger(config);
   const clock = new ManualClock();
   const app = createApplication(config, { logger, clock, redis: null });

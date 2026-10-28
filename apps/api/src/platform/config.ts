@@ -140,6 +140,22 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       'BOOTSTRAP_ADMIN_PASSWORD looks like a placeholder; set a strong password in production',
     ]);
   }
+  if (config.NODE_ENV === 'production') {
+    // Security review F1: the .env.example values are public; refuse them in production.
+    const placeholderSources = Object.entries(config.WEBHOOK_SOURCES_JSON)
+      .filter(([, source]) => /change-me|example|insecure|dev-only/i.test(source.secret))
+      .map(([id]) => id);
+    if (placeholderSources.length > 0) {
+      throw new ConfigError([
+        `WEBHOOK_SOURCES_JSON: placeholder secret for source(s) ${placeholderSources.join(', ')}; generate random secrets in production`,
+      ]);
+    }
+    if (!config.COOKIE_SECURE) {
+      throw new ConfigError([
+        'COOKIE_SECURE must be true in production (refresh cookies need HTTPS)',
+      ]);
+    }
+  }
   return config;
 }
 
