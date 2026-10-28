@@ -1,3 +1,4 @@
+import type { Db } from '../../platform/db/database.js';
 import type { Authenticator } from '../../platform/http/access.js';
 
 /**
@@ -16,7 +17,12 @@ export interface AuditRecordInput {
 
 /** Writes explicit, domain-significant audit entries (in addition to the automatic HTTP audit hook). */
 export interface AuditRecorder {
-  record(entry: AuditRecordInput): Promise<void>;
+  /**
+   * Appends one entry. Pass `executor` (your open transaction) to make the entry commit or
+   * roll back together with your state change; this is the recommended use for decisions
+   * such as approvals. Errors propagate to the caller (see ADR-0064).
+   */
+  record(entry: AuditRecordInput, executor?: Db): Promise<void>;
 }
 
 export interface AuthPublicApi {

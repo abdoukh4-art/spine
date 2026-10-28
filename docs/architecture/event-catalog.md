@@ -32,6 +32,10 @@ interface DomainEvent<TType extends string, TPayload> {
 | `approval.requested` (1)     | playbooks  | `{approvalId, runId, stepId, approverRole, prompt, expiresAt}`             | (console via polling)                                                    |                                                       |
 | `approval.decided` (1)       | playbooks  | `{approvalId, runId, decision, decidedBy}`                                 | playbooks executor (resume)                                              |                                                       |
 
+Phase 1 note (alerts): the `alert.scored` consumer is the subscriber `alerts.project-score`. It
+writes `score`/`severity` and ignores a score older than the one already applied, because
+redeliveries can arrive out of order ([ADR-0038](../adr/0038-score-projection-ordering-guard.md)).
+
 ## Delivery notes: enrichment and scoring
 
 - `alert.enriched`: `enrichments` is the alert's **merged** stored set, not only the

@@ -42,6 +42,15 @@ in the same PR. CI checks that every ADR file appears in this index.
 | [0026](0026-mttd-mttr-definitions.md)                             | Precise definitions of MTTD, MTTR and playbook success rate                     | accepted | data                   |
 | [0027](0027-workspace-packages-as-source-and-esbuild-bundling.md) | Consume workspace packages as TS source; bundle the API with esbuild            | accepted | architecture, process  |
 | [0028](0028-security-patches-override-version-maturity.md)        | Security patches override the "mature version" rule (amends 0022)               | accepted | security, process      |
+| [0030](0030-pure-normalizers-and-preparation-pipeline.md)         | Pure normalizers returning a typed Result; no `generic` normalizer              | accepted | architecture, data     |
+| [0031](0031-source-mapping-rules-suricata-and-cef.md)             | Mapping rules for Suricata EVE and CEF sources                                  | accepted | data                   |
+| [0032](0032-indicator-normalization.md)                           | Indicator extraction and normalization rules                                    | accepted | data                   |
+| [0033](0033-ingest-transaction-race-and-idempotency.md)           | One ingest transaction; retry the whole unit after losing a race                | accepted | data, architecture     |
+| [0034](0034-ingest-backpressure-implementation.md)                | Back-pressure checks a cached outbox backlog in `onRequest`                     | accepted | architecture, ops      |
+| [0035](0035-webhook-authentication-details.md)                    | Webhook authentication: HMAC over the raw body in an encapsulated route scope   | accepted | security               |
+| [0036](0036-alert-lifecycle-resolved-at.md)                       | `resolvedAt` is the first close, never moved; same-status updates are no-ops    | accepted | data                   |
+| [0037](0037-alert-queue-query-semantics.md)                       | Alert queue queries: NULLS LAST cursors, effective severity, parent techniques  | accepted | data, architecture     |
+| [0038](0038-score-projection-ordering-guard.md)                   | The score projection ignores scores older than the one already applied          | accepted | data, architecture     |
 | [0040](0040-enrichment-idempotent-receiver.md)                    | The enrichment handler is an idempotent receiver keyed by event id              | accepted | architecture, data     |
 | [0041](0041-enrichment-merge-keeps-last-success.md)               | Stored enrichment keeps the last success; events carry the merged view          | accepted | data                   |
 | [0042](0042-scoring-publish-only-on-change.md)                    | Scoring is idempotent per (alert, ruleset) and publishes only on change         | accepted | architecture, data     |
@@ -49,3 +58,17 @@ in the same PR. CI checks that every ADR file appears in this index.
 | [0044](0044-resilience-defaults-and-breaker-semantics.md)         | Resilience defaults and circuit-breaker semantics                               | accepted | architecture, ops      |
 | [0045](0045-deterministic-mock-providers.md)                      | Fixture-driven mock providers with seeded fault injection                       | accepted | testing, architecture  |
 | [0046](0046-ruleset-loaded-once-fail-fast.md)                     | Load the scoring ruleset once at startup and fail fast if invalid               | accepted | architecture, ops      |
+| [0050](0050-playbook-engine-reduce-decide-act.md)                 | Playbook engine as reduce → decide → act, with attempt-scoped idempotency keys  | accepted | architecture           |
+| [0051](0051-executor-hosting-on-bullmq.md)                        | Hosting the executor on BullMQ: one job = one advance, timers as delayed jobs   | accepted | architecture, ops      |
+| [0052](0052-run-lifecycle-dry-run-cancel-timeout.md)              | Run lifecycle semantics: dry-run, cancellation, approval timeouts               | accepted | architecture, security |
+| [0053](0053-run-snapshot-and-evaluation-context.md)               | Runs carry an alert snapshot; conditions see an enrichment summary              | accepted | architecture, data     |
+| [0054](0054-locked-down-playbook-source-parsing.md)               | Locked-down YAML/JSON parsing for playbook sources                              | accepted | security               |
+| [0055](0055-run-projection-and-outbox-in-append-transaction.md)   | Rebuild the run projection and emit domain events inside every append           | accepted | data, architecture     |
+| [0060](0060-authenticator-reloads-user-with-short-cache.md)       | Authenticator reloads the user per request (≤ 30 s cache)                       | accepted | security, architecture |
+| [0061](0061-csrf-origin-required-in-every-environment.md)         | CSRF: custom header + allow-listed Origin in every environment                  | accepted | security               |
+| [0062](0062-strict-refresh-rotation-under-row-lock.md)            | Strict refresh rotation under a row lock, no grace window                       | accepted | security, data         |
+| [0063](0063-two-dimensional-login-throttle.md)                    | Two-dimensional login throttle (Redis fixed window, in-memory fallback)         | accepted | security, architecture |
+| [0064](0064-audit-log-write-policy.md)                            | Audit write policy: best-effort HTTP trail, no bodies, hashed emails            | accepted | security, data         |
+| [0065](0065-last-active-admin-protection.md)                      | Always keep at least one active admin                                           | accepted | security, data         |
+| [0066](0066-first-run-admin-bootstrap.md)                         | First-run admin bootstrap from env, only on an empty users table                | accepted | security, ops          |
+| [0067](0067-authorize-before-body-parsing.md)                     | Authorize in onRequest and attribute forbidden requests                         | accepted | security, architecture |

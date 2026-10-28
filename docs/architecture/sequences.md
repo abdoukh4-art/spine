@@ -72,7 +72,7 @@ sequenceDiagram
   participant API as API
 
   T->>DB: INSERT playbook_runs(pending) + run.requested event
-  T->>Q: add {runId} (jobId=run__id__0)
+  T->>Q: add {runId} (jobId=run__id__1, via the outbox)
   Q->>X: job {runId}
   X->>DB: load definition (pinned version) + events
   X->>E: reduce(events) → state
@@ -90,7 +90,7 @@ sequenceDiagram
   Q->>X: job {runId}
   X->>E: reduce(events) → next = "block"
   X->>DB: append step.started(block)
-  X->>FW: block(203.0.113.7, idempotencyKey=runId:block)
+  X->>FW: block(203.0.113.7, idempotencyKey=runId:block:1)
   Note over X: 💥 worker crashes here
   Q->>X: job retried after stalled-job detection
   X->>E: reduce(events): "block" started, not finished → retry it
@@ -100,5 +100,5 @@ sequenceDiagram
 ```
 
 The key properties shown here: **state is never held in memory between steps**, every side
-effect carries an **idempotency key derived from (runId, stepId)**, and the engine decides
+effect carries an **idempotency key derived from (runId, stepId, attempt)**, and the engine decides
 the next action from the event log alone (a pure function, so it can be property-tested).
