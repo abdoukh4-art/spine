@@ -99,6 +99,8 @@ export interface AlertsTable {
   source_severity: string;
   score: number | null;
   severity: string | null;
+  /** computedAt of the score last applied by the projection (migration 0201, ADR-0038). */
+  scored_at: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
   occurred_at: Timestamp;
   received_at: Timestamp;
   last_seen_at: Timestamp;

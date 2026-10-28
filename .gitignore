@@ -13,3 +13,4 @@ test-results/
 .turbo/
 infra/tls/*.pem
 infra/tls/*.key
+.claude/

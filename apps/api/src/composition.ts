@@ -59,8 +59,16 @@ export function createApplication(
   const deps: PlatformDeps = { config, logger, db, clock, ids, events, redis };
 
   const auth = createAuthModule(deps);
-  const alerts = createAlertsModule(deps);
-  const ingestion = createIngestionModule(deps);
+  const alerts = createAlertsModule(deps, {
+    // INTEGRATION: replace with the enrichment/scoring/playbooks public APIs in Phase 2
+    // (enrichment.getForAlert, scoring.getForAlert, playbooks.runsForAlert).
+    detailSources: {
+      enrichmentsFor: () => Promise.resolve([]),
+      scoreFor: () => Promise.resolve(null),
+      runsFor: () => Promise.resolve([]),
+    },
+  });
+  const ingestion = createIngestionModule(deps, { alerts: alerts.api });
   const enrichment = createEnrichmentModule(deps);
   const scoring = createScoringModule(deps);
   const playbooks = createPlaybooksModule(deps, {
