@@ -61,14 +61,17 @@ something a learner must understand first.
 ## Pros and cons of the options
 
 ### Go backend
+
 - 👍 Excellent performance and static binaries.
 - 👎 Two languages means duplicated schemas or code generation, and a steeper path for the target audience.
 
 ### Python backend
+
 - 👍 Popular in security tooling.
 - 👎 The same schema duplication problem. Type checking is optional and weaker.
 
 ### Nx / Turborepo
+
 - 👍 Caching and affected-only builds.
 - 👎 Overkill at five packages, and adds concepts to learn. Revisit if CI exceeds 10 minutes.
 
@@ -80,5 +83,5 @@ something a learner must understand first.
 
 ## Further reading
 
-- pnpm docs, *Motivation* and *Symlinked node_modules structure*
-- TypeScript handbook, *TSConfig reference: strict*
+- pnpm docs, _Motivation_ and _Symlinked node_modules structure_
+- TypeScript handbook, _TSConfig reference: strict_

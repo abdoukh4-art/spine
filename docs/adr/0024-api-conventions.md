@@ -62,6 +62,6 @@ headers, CORS, body limits) must be uniform rather than per route.
 
 ## Further reading
 
-- RFC 9457, *Problem Details for HTTP APIs*
+- RFC 9457, _Problem Details for HTTP APIs_
 - Google API Design Guide (resource-oriented design, pagination)
-- Use The Index, Luke, *"We need tool support for keyset pagination"* (Markus Winand)
+- Use The Index, Luke, _"We need tool support for keyset pagination"_ (Markus Winand)

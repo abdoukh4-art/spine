@@ -7,7 +7,7 @@
 
 ## Context and problem statement
 
-A SOAR platform's value comes from *acting*: blocking an IP, opening a ticket, notifying a
+A SOAR platform's value comes from _acting_: blocking an IP, opening a ticket, notifying a
 channel. Spine is a portfolio and learning project that must run offline and must
 **never** ship real offensive or destructive capability, or contact real third-party systems.
 
@@ -36,7 +36,7 @@ channel. Spine is a portfolio and learning project that must run offline and mus
 - `SimulatedTicketing.create(…)` returns `SIM-<n>` ticket IDs. `SimulatedChat.post(…)` stores messages.
 - Each adapter has configurable `latencyMs` and `failureRate` (env/config), so the demo
   and the tests can exercise retries and compensation.
-- The console shows a "Simulated integrations" page listing everything that *would* have
+- The console shows a "Simulated integrations" page listing everything that _would_ have
   happened. That makes it a useful teaching view.
 - Code review rule: any adapter that performs real network I/O must be rejected in this repo.
 
@@ -49,9 +49,11 @@ channel. Spine is a portfolio and learning project that must run offline and mus
 ## Pros and cons of the options
 
 ### Log-only stubs
+
 - 👎 Can't test idempotency, failures or compensation, so it teaches nothing about real integrations.
 
 ### Emulated real products
+
 - 👎 Heavy, and drifts toward real capability. It conflicts with the safety driver.
 
 ## What would make us revisit this
