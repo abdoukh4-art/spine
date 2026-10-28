@@ -42,6 +42,15 @@ in the same PR. CI checks that every ADR file appears in this index.
 | [0026](0026-mttd-mttr-definitions.md)                             | Precise definitions of MTTD, MTTR and playbook success rate                     | accepted | data                   |
 | [0027](0027-workspace-packages-as-source-and-esbuild-bundling.md) | Consume workspace packages as TS source; bundle the API with esbuild            | accepted | architecture, process  |
 | [0028](0028-security-patches-override-version-maturity.md)        | Security patches override the "mature version" rule (amends 0022)               | accepted | security, process      |
+| [0030](0030-pure-normalizers-and-preparation-pipeline.md)         | Pure normalizers returning a typed Result; no `generic` normalizer              | accepted | architecture, data     |
+| [0031](0031-source-mapping-rules-suricata-and-cef.md)             | Mapping rules for Suricata EVE and CEF sources                                  | accepted | data                   |
+| [0032](0032-indicator-normalization.md)                           | Indicator extraction and normalization rules                                    | accepted | data                   |
+| [0033](0033-ingest-transaction-race-and-idempotency.md)           | One ingest transaction; retry the whole unit after losing a race                | accepted | data, architecture     |
+| [0034](0034-ingest-backpressure-implementation.md)                | Back-pressure checks a cached outbox backlog in `onRequest`                     | accepted | architecture, ops      |
+| [0035](0035-webhook-authentication-details.md)                    | Webhook authentication: HMAC over the raw body in an encapsulated route scope   | accepted | security               |
+| [0036](0036-alert-lifecycle-resolved-at.md)                       | `resolvedAt` is the first close, never moved; same-status updates are no-ops    | accepted | data                   |
+| [0037](0037-alert-queue-query-semantics.md)                       | Alert queue queries: NULLS LAST cursors, effective severity, parent techniques  | accepted | data, architecture     |
+| [0038](0038-score-projection-ordering-guard.md)                   | The score projection ignores scores older than the one already applied          | accepted | data, architecture     |
 | [0060](0060-authenticator-reloads-user-with-short-cache.md)       | Authenticator reloads the user per request (≤ 30 s cache)                       | accepted | security, architecture |
 | [0061](0061-csrf-origin-required-in-every-environment.md)         | CSRF: custom header + allow-listed Origin in every environment                  | accepted | security               |
 | [0062](0062-strict-refresh-rotation-under-row-lock.md)            | Strict refresh rotation under a row lock, no grace window                       | accepted | security, data         |
