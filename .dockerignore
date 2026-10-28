@@ -32,3 +32,6 @@ load
 **/test
 **/*.test.ts
 **/*.test.tsx
+
+# Local agent worktrees
+.claude

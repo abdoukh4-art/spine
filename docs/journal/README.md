@@ -12,3 +12,4 @@ a mentor would explain their own week: mistakes included, because that's where t
 | 2026-10-28 | [Ingestion and alerts](2026-10-28-ingestion-alerts.md)                                              |
 | 2026-10-28 | [Enrichment and scoring](2026-10-28-enrichment-scoring.md)                                          |
 | 2026-10-28 | [Infrastructure and observability: making the invisible visible](2026-10-28-infra-observability.md) |
+| 2026-10-28 | [Console: building a UI against an API that doesn't exist yet](2026-10-28-console.md)               |
