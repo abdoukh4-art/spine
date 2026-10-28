@@ -1,0 +1,71 @@
+# Spine API as a hardened systemd service (ADR-0083, docs/operations/deployment.md#systemd).
+#
+# Layout assumed (see deployment.md for the install steps):
+#   /opt/spine/            release: dist/, node_modules/, migrations/, config/ (owned by root, read-only)
+#   /etc/spine/spine.env   configuration (mode 0640, root:spine): same variables as .env.example
+#   user/group `spine`     system account without a shell or home
+#
+# Check the sandbox with: systemd-analyze security spine-api.service
+[Unit]
+Description=Spine SOAR API
+Documentation=https://github.com/abdoukh4-art/spine/blob/main/docs/operations/deployment.md
+After=network-online.target postgresql.service redis-server.service
+Wants=network-online.target
+# Give up after 5 crashes in 60 s instead of restart-looping forever.
+StartLimitIntervalSec=60s
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=spine
+Group=spine
+WorkingDirectory=/opt/spine
+EnvironmentFile=/etc/spine/spine.env
+Environment=NODE_ENV=production SERVICE_NAME=spine-api MIGRATIONS_DIR=/opt/spine/migrations CONFIG_DIR=/opt/spine/config
+ExecStart=/usr/bin/node --enable-source-maps --import ./dist/instrument.js dist/main.js
+
+# Lifecycle: SIGTERM starts the graceful shutdown (stop accepting, drain, close pools).
+# TimeoutStopSec must exceed SHUTDOWN_TIMEOUT_MS (15 s default) so systemd never SIGKILLs
+# a shutdown that is still draining.
+KillSignal=SIGTERM
+TimeoutStopSec=30s
+Restart=on-failure
+RestartSec=2s
+
+# Resource limits (cgroup v2). Node sizes its heap from the cgroup limit.
+MemoryMax=768M
+MemoryHigh=640M
+TasksMax=256
+LimitNOFILE=65536
+
+# --- Sandboxing: the process can read its code and talk TCP/IP, nothing else ---------------
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+ProcSubset=pid
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RemoveIPC=yes
+UMask=0077
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+# V8's JIT needs writable+executable memory, so MemoryDenyWriteExecute must stay off.
+MemoryDenyWriteExecute=no
+
+[Install]
+WantedBy=multi-user.target

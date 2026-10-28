@@ -1,0 +1,161 @@
+# Spine SLO recording rules and alerts (docs/operations/slos.md, ADR-0084).
+#
+# Multi-window, multi-burn-rate alerting (Google SRE Workbook, ch. 5): an alert fires when
+# the error budget is being consumed fast over a LONG window (it matters) AND is still
+# being consumed over a SHORT window (it is still happening, so the alert resets quickly
+# after a fix). Burn rate 1 = spending exactly the budget over the 30-day SLO period.
+#
+#   severity  | burn rate | long window | short window | budget spent when it fires
+#   page      | 14.4      | 1h          | 5m           | 2 %
+#   page      | 6         | 6h          | 30m          | 5 %
+#   ticket    | 3         | 1d          | 2h           | 10 %
+#   ticket    | 1         | 3d          | 6h           | 10 %
+#
+# Metric names follow the OTel Prometheus exporter conventions verified in
+# docs/operations/observability.md: counters get `_total`, histograms keep their name
+# (no unit suffix) and expose `_bucket/_sum/_count`.
+
+groups:
+  # ---------------------------------------------------------------------------------------
+  # SLI 1: ingest availability (SLO 99.5 %). Bad = 5xx on the ingest routes, including
+  # 503 back-pressure: from the sensor's point of view the alert was not accepted.
+  - name: spine-slo-ingest-availability
+    rules:
+      - record: spine:ingest_requests:rate5m
+        expr: sum(rate(http_server_request_duration_count{job="spine-api",http_request_method="POST",http_route=~"/api/v1/alerts|/api/v1/ingest/.+"}[5m]))
+      - record: spine:ingest_errors:rate5m
+        expr: sum(rate(http_server_request_duration_count{job="spine-api",http_request_method="POST",http_route=~"/api/v1/alerts|/api/v1/ingest/.+",http_response_status_code=~"5.."}[5m]))
+      # Error ratio per window, used by the burn-rate alerts below.
+      - record: spine:ingest_error_ratio:rate5m
+        expr: spine:ingest_errors:rate5m / clamp_min(spine:ingest_requests:rate5m, 1e-9)
+      - record: spine:ingest_error_ratio:rate30m
+        expr: sum(rate(http_server_request_duration_count{job="spine-api",http_request_method="POST",http_route=~"/api/v1/alerts|/api/v1/ingest/.+",http_response_status_code=~"5.."}[30m])) / clamp_min(sum(rate(http_server_request_duration_count{job="spine-api",http_request_method="POST",http_route=~"/api/v1/alerts|/api/v1/ingest/.+"}[30m])), 1e-9)
+      - record: spine:ingest_error_ratio:rate1h
+        expr: sum(rate(http_server_request_duration_count{job="spine-api",http_request_method="POST",http_route=~"/api/v1/alerts|/api/v1/ingest/.+",http_response_status_code=~"5.."}[1h])) / clamp_min(sum(rate(http_server_request_duration_count{job="spine-api",http_request_method="POST",http_route=~"/api/v1/alerts|/api/v1/ingest/.+"}[1h])), 1e-9)
+      - record: spine:ingest_error_ratio:rate2h
+        expr: sum(rate(http_server_request_duration_count{job="spine-api",http_request_method="POST",http_route=~"/api/v1/alerts|/api/v1/ingest/.+",http_response_status_code=~"5.."}[2h])) / clamp_min(sum(rate(http_server_request_duration_count{job="spine-api",http_request_method="POST",http_route=~"/api/v1/alerts|/api/v1/ingest/.+"}[2h])), 1e-9)
+      - record: spine:ingest_error_ratio:rate6h
+        expr: sum(rate(http_server_request_duration_count{job="spine-api",http_request_method="POST",http_route=~"/api/v1/alerts|/api/v1/ingest/.+",http_response_status_code=~"5.."}[6h])) / clamp_min(sum(rate(http_server_request_duration_count{job="spine-api",http_request_method="POST",http_route=~"/api/v1/alerts|/api/v1/ingest/.+"}[6h])), 1e-9)
+      - record: spine:ingest_error_ratio:rate1d
+        expr: sum(rate(http_server_request_duration_count{job="spine-api",http_request_method="POST",http_route=~"/api/v1/alerts|/api/v1/ingest/.+",http_response_status_code=~"5.."}[1d])) / clamp_min(sum(rate(http_server_request_duration_count{job="spine-api",http_request_method="POST",http_route=~"/api/v1/alerts|/api/v1/ingest/.+"}[1d])), 1e-9)
+      - record: spine:ingest_error_ratio:rate3d
+        expr: sum(rate(http_server_request_duration_count{job="spine-api",http_request_method="POST",http_route=~"/api/v1/alerts|/api/v1/ingest/.+",http_response_status_code=~"5.."}[3d])) / clamp_min(sum(rate(http_server_request_duration_count{job="spine-api",http_request_method="POST",http_route=~"/api/v1/alerts|/api/v1/ingest/.+"}[3d])), 1e-9)
+
+      - alert: SpineIngestErrorBudgetBurnFast
+        expr: |
+          (spine:ingest_error_ratio:rate1h > (14.4 * 0.005) and spine:ingest_error_ratio:rate5m > (14.4 * 0.005))
+          or
+          (spine:ingest_error_ratio:rate6h > (6 * 0.005) and spine:ingest_error_ratio:rate30m > (6 * 0.005))
+        labels: { severity: page, slo: ingest-availability }
+        annotations:
+          summary: Ingest is failing fast enough to exhaust the 30-day error budget within days
+          runbook: docs/operations/runbooks.md#ingest-errors-and-429-storms
+      - alert: SpineIngestErrorBudgetBurnSlow
+        expr: |
+          (spine:ingest_error_ratio:rate1d > (3 * 0.005) and spine:ingest_error_ratio:rate2h > (3 * 0.005))
+          or
+          (spine:ingest_error_ratio:rate3d > (1 * 0.005) and spine:ingest_error_ratio:rate6h > (1 * 0.005))
+        labels: { severity: ticket, slo: ingest-availability }
+        annotations:
+          summary: Ingest error budget is being consumed faster than it accrues
+          runbook: docs/operations/runbooks.md#ingest-errors-and-429-storms
+
+  # ---------------------------------------------------------------------------------------
+  # SLI 2: ingest → scored latency (SLO: 95 % of alerts scored within 2 s). Bad = an alert
+  # whose time from receivedAt to its score being stored exceeds 2 s. Needs the histogram
+  # spine_alert_time_to_score_seconds (scoring module, Phase 2); until it exists these
+  # rules evaluate to "no data" and never fire.
+  - name: spine-slo-time-to-score
+    rules:
+      - record: spine:time_to_score_slow_ratio:rate5m
+        expr: 1 - (sum(rate(spine_alert_time_to_score_seconds_bucket{le="2"}[5m])) / clamp_min(sum(rate(spine_alert_time_to_score_seconds_count[5m])), 1e-9))
+      - record: spine:time_to_score_slow_ratio:rate30m
+        expr: 1 - (sum(rate(spine_alert_time_to_score_seconds_bucket{le="2"}[30m])) / clamp_min(sum(rate(spine_alert_time_to_score_seconds_count[30m])), 1e-9))
+      - record: spine:time_to_score_slow_ratio:rate1h
+        expr: 1 - (sum(rate(spine_alert_time_to_score_seconds_bucket{le="2"}[1h])) / clamp_min(sum(rate(spine_alert_time_to_score_seconds_count[1h])), 1e-9))
+      - record: spine:time_to_score_slow_ratio:rate6h
+        expr: 1 - (sum(rate(spine_alert_time_to_score_seconds_bucket{le="2"}[6h])) / clamp_min(sum(rate(spine_alert_time_to_score_seconds_count[6h])), 1e-9))
+      - record: spine:time_to_score_p95:5m
+        expr: histogram_quantile(0.95, sum by (le) (rate(spine_alert_time_to_score_seconds_bucket[5m])))
+      # Budget = 5 %.
+      - alert: SpineTimeToScoreBudgetBurn
+        expr: |
+          (spine:time_to_score_slow_ratio:rate1h > (14.4 * 0.05) and spine:time_to_score_slow_ratio:rate5m > (14.4 * 0.05))
+          or
+          (spine:time_to_score_slow_ratio:rate6h > (6 * 0.05) and spine:time_to_score_slow_ratio:rate30m > (6 * 0.05))
+        labels: { severity: page, slo: time-to-score }
+        annotations:
+          summary: Alerts take longer than 2 s to be scored (pipeline is falling behind)
+          runbook: docs/operations/runbooks.md#outbox-backlog-growing
+
+  # ---------------------------------------------------------------------------------------
+  # SLI 3: response-action success (SLO 99 % of action steps succeed, simulated adapters).
+  - name: spine-slo-playbook-actions
+    rules:
+      - record: spine:playbook_action_failure_ratio:rate1h
+        expr: sum(rate(spine_playbook_step_duration_seconds_count{type=~"notify|create_ticket|block_indicator|set_status",status="failed"}[1h])) / clamp_min(sum(rate(spine_playbook_step_duration_seconds_count{type=~"notify|create_ticket|block_indicator|set_status",status=~"succeeded|failed"}[1h])), 1e-9)
+      - record: spine:playbook_action_failure_ratio:rate6h
+        expr: sum(rate(spine_playbook_step_duration_seconds_count{type=~"notify|create_ticket|block_indicator|set_status",status="failed"}[6h])) / clamp_min(sum(rate(spine_playbook_step_duration_seconds_count{type=~"notify|create_ticket|block_indicator|set_status",status=~"succeeded|failed"}[6h])), 1e-9)
+      - record: spine:playbook_success_ratio:rate1h
+        expr: sum(rate(spine_playbook_runs_total{status="succeeded"}[1h])) / clamp_min(sum(rate(spine_playbook_runs_total{status=~"succeeded|failed|compensated"}[1h])), 1e-9)
+      - alert: SpinePlaybookActionFailures
+        expr: spine:playbook_action_failure_ratio:rate1h > (14.4 * 0.01) or spine:playbook_action_failure_ratio:rate6h > (6 * 0.01)
+        for: 5m
+        labels: { severity: page, slo: playbook-actions }
+        annotations:
+          summary: Response actions are failing ({{ $value | humanizePercentage }} over the window)
+          runbook: docs/operations/runbooks.md#playbook-runs-stuck-or-failing
+
+  # ---------------------------------------------------------------------------------------
+  # Cause-based alerts: symptoms an operator should look at before an SLO burns.
+  - name: spine-operational
+    rules:
+      - alert: SpineTargetDown
+        expr: up{job=~"spine-api|spine-worker"} == 0
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: '{{ $labels.job }} is not answering Prometheus scrapes'
+          runbook: docs/operations/runbooks.md#database-down
+      - alert: SpineOutboxBacklogGrowing
+        expr: max(spine_outbox_backlog) > 1000 and deriv(max(spine_outbox_backlog)[10m:1m]) > 0
+        for: 10m
+        labels: { severity: ticket }
+        annotations:
+          summary: 'Outbox backlog is {{ $value }} and still growing: the relay is not keeping up'
+          runbook: docs/operations/runbooks.md#outbox-backlog-growing
+      - alert: SpineQueueFailedJobs
+        expr: sum by (queue) (spine_queue_depth{state="failed"}) > 0 and sum by (queue) (delta(spine_queue_depth{state="failed"}[15m])) > 0
+        for: 5m
+        labels: { severity: ticket }
+        annotations:
+          summary: 'Jobs are failing permanently on {{ $labels.queue }}'
+          runbook: docs/operations/runbooks.md#playbook-runs-stuck-or-failing
+      - alert: SpineEnrichmentCircuitOpen
+        expr: max by (provider) (spine_enrichment_circuit_state) == 2
+        for: 5m
+        labels: { severity: ticket }
+        annotations:
+          summary: 'Enrichment provider {{ $labels.provider }} circuit has been open for 5 minutes'
+          runbook: docs/operations/runbooks.md#enrichment-circuit-open
+      - alert: SpineIngestBackpressure
+        expr: sum(rate(spine_ingest_backpressure_rejections_total[5m])) > 0
+        for: 5m
+        labels: { severity: ticket }
+        annotations:
+          summary: Ingestion is shedding load (503 back-pressure) for 5 minutes
+          runbook: docs/operations/runbooks.md#outbox-backlog-growing
+      - alert: SpineApprovalsPiling
+        expr: max(spine_approvals_pending) > 20
+        for: 30m
+        labels: { severity: ticket }
+        annotations:
+          summary: '{{ $value }} playbook approvals have been waiting for analysts for 30 minutes'
+          runbook: docs/operations/runbooks.md#playbook-runs-stuck-or-failing
+      - alert: SpineEventLoopSaturated
+        expr: max by (job) (spine_nodejs_eventloop_delay_p99_seconds) > 0.2
+        for: 10m
+        labels: { severity: ticket }
+        annotations:
+          summary: '{{ $labels.job }} event loop p99 delay above 200 ms: CPU-bound work is starving I/O'
+          runbook: docs/operations/runbooks.md#ingest-errors-and-429-storms

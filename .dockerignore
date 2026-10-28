@@ -1,0 +1,34 @@
+# Build context hygiene (infra/docker/*.Dockerfile use the repo root as context).
+# Smaller context = faster builds; and secrets or local state must never reach an image layer.
+
+# Dependencies and build output are recreated inside the image.
+**/node_modules
+**/dist
+**/coverage
+**/.vite
+**/*.tsbuildinfo
+playwright-report
+test-results
+
+# VCS, editor and OS noise
+.git
+.github
+.husky
+**/.DS_Store
+**/*.log
+
+# Secrets and local configuration: NEVER in an image (twelve-factor III: config is env).
+.env
+.env.*
+!.env.example
+infra/tls
+
+# Not needed to build either image
+docs
+infra/grafana
+infra/prometheus
+infra/systemd
+load
+**/test
+**/*.test.ts
+**/*.test.tsx

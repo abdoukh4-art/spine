@@ -31,7 +31,10 @@ build: ## Build all packages and apps
 openapi: ## Regenerate docs/architecture/openapi.json
 	pnpm openapi:generate
 
-up: .env ## Start the full stack (API, worker, console, Postgres, Redis, Prometheus, Grafana)
+infra/tls/server.crt:
+	./scripts/dev-certs.sh
+
+up: .env infra/tls/server.crt ## Start the full stack (API, worker, console, Postgres, Redis, Prometheus, Grafana)
 	$(COMPOSE) up -d --build
 
 down: ## Stop the stack

@@ -5,7 +5,7 @@ import { installGracefulShutdown } from './platform/lifecycle.js';
 import { createLogger } from './platform/logger.js';
 import { createRedis } from './platform/queue/bullmq.js';
 import { buildHttpServer, runReadinessChecks } from './platform/http/server.js';
-import { startTelemetry } from './platform/telemetry/index.js';
+import { startTelemetry } from './platform/telemetry/sdk.js';
 
 /** API process entrypoint: HTTP server only. Background work runs in worker.ts. */
 async function main(): Promise<void> {
