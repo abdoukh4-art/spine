@@ -5,6 +5,7 @@ import { migrationsUpToDate } from './platform/db/migrator.js';
 import { OutboxEventPublisher } from './platform/events/outbox.js';
 import { EventSubscriptions, type EventPublisher } from './platform/events/types.js';
 import type { Authenticator } from './platform/http/access.js';
+import { ConflictError } from './platform/errors.js';
 import { createLogger, type Logger } from './platform/logger.js';
 import type { PlatformDeps, SpineModule } from './platform/module.js';
 import { systemClock, uuidV7Generator, type Clock, type IdGenerator } from './platform/runtime.js';
@@ -16,6 +17,10 @@ import { createIngestionModule } from './modules/ingestion/index.js';
 import { createMetricsModule } from './modules/metrics/index.js';
 import { createPlaybooksModule } from './modules/playbooks/index.js';
 import { createScoringModule } from './modules/scoring/index.js';
+import type { AlertsPublicApi } from './modules/alerts/public-api.js';
+import type { EnrichmentPublicApi } from './modules/enrichment/public-api.js';
+import type { PlaybooksGateways } from './modules/playbooks/index.js';
+import type { ScoringPublicApi } from './modules/scoring/public-api.js';
 
 /**
  * Composition root (ADR-0002): the ONE place that knows every module and wires their
@@ -58,37 +63,37 @@ export function createApplication(
   const events = overrides.events ?? new OutboxEventPublisher(ids, clock, overrides.traceparent);
   const deps: PlatformDeps = { config, logger, db, clock, ids, events, redis };
 
+  // Modules are created in dependency order. Where two modules need each other (alerts ⇄
+  // playbooks, alerts ⇄ enrichment), the earlier one gets a late-bound closure: the
+  // referenced module exists by the time any request or event reaches the closure.
   const auth = createAuthModule(deps);
   const alerts = createAlertsModule(deps, {
-    // INTEGRATION: replace with the enrichment/scoring/playbooks public APIs in Phase 2
-    // (enrichment.getForAlert, scoring.getForAlert, playbooks.runsForAlert).
     detailSources: {
-      enrichmentsFor: () => Promise.resolve([]),
-      scoreFor: () => Promise.resolve(null),
-      runsFor: () => Promise.resolve([]),
+      enrichmentsFor: (alertId) => enrichment.api.getForAlert(alertId),
+      scoreFor: (alertId) => scoring.api.getForAlert(alertId),
+      runsFor: (alertId) => playbooks.api.runsForAlert(alertId),
     },
   });
   const ingestion = createIngestionModule(deps, { alerts: alerts.api });
-  // INTEGRATION: replace with the alerts public API in Phase 2 (`alertLookup: alerts.api`,
-  // AlertsPublicApi.get has the same shape). Until then POST /alerts/:id/enrich answers 404.
-  const enrichment = createEnrichmentModule(deps, {
-    alertLookup: { get: () => Promise.resolve(null) },
-  });
+  const enrichment = createEnrichmentModule(deps, { alertLookup: alerts.api });
   const scoring = createScoringModule(deps);
   const playbooks = createPlaybooksModule(deps, {
-    // INTEGRATION: replace with enrichment public API (enrichAlert) in Phase 2.
-    enrichment: { enrich: () => Promise.resolve([]) },
-    // INTEGRATION: replace with scoring public API (scoreAndStore / preview when !persist) in Phase 2.
-    scoring: { score: () => Promise.resolve(null) },
-    // INTEGRATION: replace with alerts public API (setStatus, mapping ConflictError to changed:false) in Phase 2.
-    alertStatus: {
-      setStatus: () => Promise.resolve({ changed: false, reason: 'alerts module not wired yet' }),
+    enrichment: {
+      enrich: (alert, options) => enrichment.api.enrichAlert(alert, options),
     },
-    // INTEGRATION: replace with alerts.get + enrichment.getForAlert + scoring.getForAlert in Phase 2.
-    alertSnapshot: { get: () => Promise.resolve(null) },
+    scoring: {
+      score: (alert, enrichments, { persist }) =>
+        persist
+          ? scoring.api.scoreAndStore(alert, enrichments)
+          : Promise.resolve(scoring.api.preview(alert, enrichments)),
+    },
+    ...alertGatewaysForPlaybooks(alerts.api, enrichment.api, scoring.api),
     audit: auth.api.audit,
   });
-  const metrics = createMetricsModule(deps);
+  const metrics = createMetricsModule(deps, {
+    alertsReceivedBetween: ({ from, to }) => alerts.api.timesReceivedBetween(from, to),
+    runsBetween: ({ from, to }) => playbooks.api.runTimesBetween(from, to),
+  });
 
   const modules = [auth, alerts, ingestion, enrichment, scoring, playbooks, metrics].map(
     (m) => m.module,
@@ -105,4 +110,42 @@ export function createApplication(
   for (const m of modules) Object.assign(readinessChecks, m.readinessChecks?.() ?? {});
 
   return { deps, modules, subscriptions, authenticator: auth.api.authenticator, readinessChecks };
+}
+
+/**
+ * Adapts the Alerts, Enrichment and Scoring public APIs to the two alert-facing ports of
+ * the Playbooks module (`set_status` steps and snapshots for manual runs).
+ */
+function alertGatewaysForPlaybooks(
+  alerts: AlertsPublicApi,
+  enrichment: EnrichmentPublicApi,
+  scoring: ScoringPublicApi,
+): Pick<PlaybooksGateways, 'alertStatus' | 'alertSnapshot'> {
+  return {
+    alertStatus: {
+      setStatus: async (alertId, status) => {
+        try {
+          if (!(await alerts.get(alertId)))
+            return { changed: false, reason: `alert ${alertId} not found` };
+          await alerts.setStatus(alertId, status, null);
+          return { changed: true };
+        } catch (err) {
+          // Illegal transitions are reported to the playbook, not thrown (port contract).
+          if (err instanceof ConflictError) return { changed: false, reason: err.message };
+          throw err;
+        }
+      },
+    },
+    alertSnapshot: {
+      get: async (alertId) => {
+        const alert = await alerts.get(alertId);
+        if (!alert) return null;
+        const [enrichments, score] = await Promise.all([
+          enrichment.getForAlert(alertId),
+          scoring.getForAlert(alertId),
+        ]);
+        return { alert, enrichments, score };
+      },
+    },
+  };
 }

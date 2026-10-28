@@ -1,4 +1,4 @@
-import type { Alert, AlertStatus } from '@spine/shared-schema';
+import type { Alert, AlertStatus, Severity } from '@spine/shared-schema';
 import type { DbExecutor } from '../../platform/events/types.js';
 
 export { OpenAlertExistsError } from './application/errors.js';
@@ -36,4 +36,19 @@ export interface AlertsPublicApi {
    * @throws OpenAlertExistsError when a concurrent transaction created the same open alert first.
    */
   create(trx: DbExecutor, alert: Alert): Promise<void>;
+
+  // ---- reporting (Phase 2, additive) ----
+
+  /** Lifecycle timestamps of alerts received in [from, to), for the Metrics module (ADR-0026). */
+  timesReceivedBetween(from: Date, to: Date): Promise<AlertTimesRow[]>;
+}
+
+/** One alert's lifecycle timestamps, as the Metrics module needs them. */
+export interface AlertTimesRow {
+  occurredAt: Date;
+  receivedAt: Date;
+  /** First close time, or null while the alert is open (including after a reopen). */
+  resolvedAt: Date | null;
+  /** Score-derived severity, falling back to the source severity before scoring. */
+  severity: Severity;
 }

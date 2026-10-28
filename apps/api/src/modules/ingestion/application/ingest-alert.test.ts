@@ -22,6 +22,9 @@ class FakeAlerts implements AlertsPublicApi {
   get(id: string) {
     return Promise.resolve(this.byId.get(id) ?? null);
   }
+  timesReceivedBetween() {
+    return Promise.resolve([]);
+  }
   setStatus(): Promise<void> {
     return Promise.resolve();
   }

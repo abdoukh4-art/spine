@@ -102,6 +102,7 @@ function racyServer(parties: number) {
   const racy: AlertsPublicApi = {
     get: (id) => real.get(id),
     setStatus: (id, to, actor) => real.setStatus(id, to, actor),
+    timesReceivedBetween: (from, to) => real.timesReceivedBetween(from, to),
     recordDuplicate: (trx, id, at) => real.recordDuplicate(trx, id, at),
     findOpenByFingerprint: async (trx, fp) => {
       const found = await real.findOpenByFingerprint(trx, fp);
