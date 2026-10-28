@@ -1,0 +1,23 @@
+{
+  "name": "@spine/shared-schema",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Zod schemas: the single source of truth for Spine's API, event and data contracts",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "zod": "4.1.13"
+  },
+  "devDependencies": {
+    "fast-check": "4.10.2"
+  }
+}
