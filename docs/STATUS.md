@@ -3,36 +3,49 @@
 > Updated after every milestone. **Honest by rule:** anything not proven by a test or a
 > recorded run is listed as unverified.
 
-_Last updated: 2026-10-28 — end of Phase 0._
+_Last updated: 2026-10-28 (evening), end of Phase 2 (integration)._
 
 ## Phase overview
 
-| Phase | Scope                                                                                                      | State             |
-| ----- | ---------------------------------------------------------------------------------------------------------- | ----------------- |
-| 0     | Vision, ADRs, contracts, monorepo skeleton, CI, docs hub                                                   | ✅ done (this PR) |
-| 1     | Ingestion+schema · Enrichment+scoring · Playbook engine · Auth+audit · Console shell · Infra+observability | ⏳ next           |
-| 2     | Integration, console features, metrics, e2e, demo                                                          | ⏳                |
-| 3     | Security review, performance, docs completeness, final README                                              | ⏳                |
+| Phase | Scope                                                                                                                        | State           |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| 0     | Vision, ADRs, contracts, monorepo skeleton, CI, docs hub                                                                     | ✅ done (PR #1) |
+| 1     | Auth+audit (#2) · Playbooks (#3) · Enrichment+scoring (#4) · Ingestion+alerts (#5) · Console (#6) · Infra+observability (#7) | ✅ merged       |
+| 2     | Integration, metrics, demo, contract + e2e tests, tutorials                                                                  | ✅ done (PR #8) |
+| 3     | Security review, performance, docs completeness, final README, release PR                                                    | ⏳ in progress  |
 
 ## Done (verified)
 
-- Founding docs: vision, domain primer, 27 ADRs, API contract, ERD, event catalog, threat model v1.
-- `@spine/shared-schema`: all contract schemas + predicate interpreter. 61 tests (incl. property tests) passing.
-- API platform: config, logging with redaction, problem+json errors, deny-by-default access
-  control, security headers, CORS, rate limiting, health/readiness, OpenAPI, migrator,
-  transactional outbox + relay, BullMQ delivery, graceful shutdown. 24 unit + 8 integration
-  tests passing (Testcontainers Postgres 16 + Redis 7).
-- SQL migrations for every bounded context (tables only; behaviour comes in Phase 1).
-- Console scaffold builds and passes its test.
+- **End-to-end on the real stack** (`make up` + `./scripts/demo.sh`): five scenarios →
+  enrichment → explainable scores (70 / 100 / 100 / 5) → `malware-containment` playbook →
+  approval → simulated block, ticket and chat → run `succeeded` (15 events) → metrics
+  (69 alerts with seeded history; MTTD mean 70 min, MTTR mean 188 min).
+- **Tests** (local, all passing):
+  - Unit: shared-schema 61, enrichers 93, playbook-engine 65, console 141, api 379.
+  - Integration: 149 (Testcontainers Postgres 16 + Redis 7), including the end-to-end pipeline and the contract tests.
+  - Playwright on the real stack: 4 journeys with axe accessibility checks.
+- **Coverage** (from the workstream reports, unit): playbook-engine 99.6 % lines / 90.1 % branches,
+  enrichers 99.5 % / 98.4 %, shared-schema 98.9 % lines; domain folders 98–100 % lines.
+- **Contract:** real responses validated against the committed `openapi.json`; CI fails if the file is stale.
+- **CI:** lint, arch, typecheck, unit, integration, contract, build, docs, commitlint, CodeQL,
+  gitleaks, pnpm audit, SBOM, Docker build + Trivy (api, console), e2e.
+- **Docs:** 70 ADRs, module guides with exercises and solutions for every module, three
+  tutorials rehearsed against the code, operations runbooks, threat model, journal.
 
-## Stubbed / not started
+## Stubbed / not done
 
-- All business modules (registered but empty).
-- `packages/playbook-engine`, `packages/enrichers`.
-- Infra (Docker, compose, nginx, Grafana), telemetry SDK bootstrap, demo, e2e, load tests.
-- Tutorials and module guides (placeholders).
+- Load test (k6) has been validated syntactically but not executed. Phase 3.
+- Threat-model rows still marked ⏳ (repudiation for playbook publish/enable/cancel is audited
+  after commit, not atomically).
+- No real integrations (by design, ADR-0018), no SSO/MFA, no multi-tenancy (non-goals).
 
 ## Known issues
 
-- Docker Hub rate-limits anonymous pulls in the build environment; images are pulled from
-  `mirror.gcr.io` and re-tagged locally. CI uses GitHub's runners and is unaffected.
+- One unexplained failure of the end-to-end integration test (did not reproduce in 9 later runs);
+  see the [integration journal](journal/2026-10-28-integration.md).
+- Score-sorted pagination can repeat or skip an alert that is re-scored while paging (ADR-0037).
+- Circuit-breaker state is per process: the API shows its own breakers, the worker's are
+  visible only as metrics.
+- The enrichment inbox table has no purge job yet (enrichment exercise 5).
+- Locally (this build environment) the console image can't run `apk upgrade` (Alpine CDN
+  unreachable), so `APK_UPGRADE=false` is set in `.env`. CI upgrades normally.
