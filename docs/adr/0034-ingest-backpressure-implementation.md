@@ -16,7 +16,7 @@ would add 200 queries/s whose answer barely changes between them.
 ## Decision drivers
 
 - Cheap: the check must cost far less than the work it protects.
-- Early: reject before authentication, body parsing (up to 10 MiB for batches) and the transaction.
+- Early: reject before body parsing (up to 10 MiB for batches) and before the transaction.
 - Honest readiness: `/readyz` must report the same condition.
 
 ## Considered options
@@ -42,8 +42,10 @@ also contributes the readiness check `ingest-backlog` (`backlog <= INGEST_MAX_BA
 - 👍 Overloaded clients are turned away before their body is read.
 - 👎 Up to ~1 s of staleness: a burst can overshoot the threshold by one second of traffic. The
   threshold is a soft limit by nature, so this is acceptable.
-- 👎 Because the check runs before authentication, an anonymous caller can learn that ingestion
-  is overloaded. `/readyz` already reveals it publicly, so nothing new leaks.
+- ⚖️ Hook order: the global access-control hook also runs in `onRequest`
+  ([ADR-0067](0067-authorize-before-body-parsing.md)) and root hooks run before route hooks, so
+  callers are authenticated (or HMAC routes skipped) first, then shed. Anonymous callers get
+  `401`, not `503`; the cost is one cached token check per shed request, which is cheap.
 
 ## Pros and cons of the options
 

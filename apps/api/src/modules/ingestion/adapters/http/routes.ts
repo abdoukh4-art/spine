@@ -92,8 +92,9 @@ function findSource(
 
 /**
  * Registers the ingestion endpoints (docs/architecture/api-contract.md#ingestion-module-ingestion).
- * All three share the back-pressure check, which runs in `onRequest`: before authentication and
- * before the (possibly 10 MiB) body is even read, because shedding load must be cheap.
+ * All three share the back-pressure check, which runs in the route's `onRequest` hook: after
+ * the global access-control hook (also `onRequest`, ADR-0067) but before the (possibly 10 MiB)
+ * body is even read, because shedding load must be cheap (ADR-0034).
  */
 export async function registerIngestionRoutes(
   api: FastifyInstance,
