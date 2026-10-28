@@ -1,0 +1,34 @@
+{
+  "name": "@spine/console",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Spine analyst console (React 19 + Vite)",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@spine/shared-schema": "workspace:*",
+    "@tanstack/react-query": "5.90.5",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "react-router": "7.9.4",
+    "zod": "4.1.13"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "16.3.0",
+    "@testing-library/user-event": "14.6.1",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "@vitejs/plugin-react": "5.0.4",
+    "jsdom": "27.0.1",
+    "vite": "7.1.12"
+  }
+}
