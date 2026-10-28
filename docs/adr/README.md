@@ -72,6 +72,11 @@ in the same PR. CI checks that every ADR file appears in this index.
 | [0065](0065-last-active-admin-protection.md)                      | Always keep at least one active admin                                                        | accepted | security, data         |
 | [0066](0066-first-run-admin-bootstrap.md)                         | First-run admin bootstrap from env, only on an empty users table                             | accepted | security, ops          |
 | [0067](0067-authorize-before-body-parsing.md)                     | Authorize in onRequest and attribute forbidden requests                                      | accepted | security, architecture |
+| [0070](0070-console-api-client-validation-and-refresh.md)         | Console API client: validate every response, single-flight token refresh                     | accepted | frontend, security     |
+| [0071](0071-console-in-browser-fake-api.md)                       | In-browser typed fake API for console tests and the standalone demo                          | accepted | frontend, testing      |
+| [0072](0072-console-plain-css-with-prefixed-classes.md)           | Console styling: one plain-CSS file, `sp-` classes, design tokens                            | accepted | frontend               |
+| [0073](0073-console-hand-built-svg-charts.md)                     | Hand-built accessible SVG bar charts, no chart library                                       | accepted | frontend               |
+| [0074](0074-console-data-freshness-and-optimistic-updates.md)     | Console freshness: polling, URL filters, optimistic approvals with rollback                  | accepted | frontend, architecture |
 | [0080](0080-telemetry-bootstrap-and-metric-conventions.md)        | Telemetry bootstrap: NodeSDK preload, Prometheus pull, optional OTLP, verified metric naming | accepted | ops                    |
 | [0081](0081-container-images-distroless-single-image.md)          | Container images: one distroless non-root image for API and worker                           | accepted | ops, security          |
 | [0082](0082-nginx-edge-proxy.md)                                  | nginx as the edge: SPA hosting, reverse proxy, TLS termination                               | accepted | ops, security          |
