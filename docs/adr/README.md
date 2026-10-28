@@ -42,3 +42,9 @@ in the same PR. CI checks that every ADR file appears in this index.
 | [0026](0026-mttd-mttr-definitions.md)                             | Precise definitions of MTTD, MTTR and playbook success rate                     | accepted | data                   |
 | [0027](0027-workspace-packages-as-source-and-esbuild-bundling.md) | Consume workspace packages as TS source; bundle the API with esbuild            | accepted | architecture, process  |
 | [0028](0028-security-patches-override-version-maturity.md)        | Security patches override the "mature version" rule (amends 0022)               | accepted | security, process      |
+| [0050](0050-playbook-engine-reduce-decide-act.md)                 | Playbook engine as reduce → decide → act, with attempt-scoped idempotency keys  | accepted | architecture           |
+| [0051](0051-executor-hosting-on-bullmq.md)                        | Hosting the executor on BullMQ: one job = one advance, timers as delayed jobs   | accepted | architecture, ops      |
+| [0052](0052-run-lifecycle-dry-run-cancel-timeout.md)              | Run lifecycle semantics: dry-run, cancellation, approval timeouts               | accepted | architecture, security |
+| [0053](0053-run-snapshot-and-evaluation-context.md)               | Runs carry an alert snapshot; conditions see an enrichment summary              | accepted | architecture, data     |
+| [0054](0054-locked-down-playbook-source-parsing.md)               | Locked-down YAML/JSON parsing for playbook sources                              | accepted | security               |
+| [0055](0055-run-projection-and-outbox-in-append-transaction.md)   | Rebuild the run projection and emit domain events inside every append           | accepted | data, architecture     |
