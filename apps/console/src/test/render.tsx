@@ -1,7 +1,6 @@
 import { QueryClient } from '@tanstack/react-query';
 import { render, screen, type RenderResult } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
-import type { ReactNode } from 'react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { AppProviders } from '../app/App';
 import { AppRoutes } from '../app/routes';
@@ -68,23 +67,6 @@ export function renderApp(
           <Route path="*" element={<LocationProbe />} />
         </Routes>
       </MemoryRouter>
-    </AppProviders>,
-  );
-  return { ...result, server, api, queryClient, user };
-}
-
-/** Renders an isolated component inside all providers and a router (for component tests). */
-export function renderWithProviders(
-  ui: ReactNode,
-  as: TestRole = 'analyst',
-  route = '/',
-): RenderedApp {
-  const { server, api } = createTestBackend(as);
-  const queryClient = createTestQueryClient();
-  const user = userEvent.setup();
-  const result = render(
-    <AppProviders api={api} queryClient={queryClient}>
-      <MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter>
     </AppProviders>,
   );
   return { ...result, server, api, queryClient, user };

@@ -54,7 +54,8 @@ export function BarChart({ title, data, valueName }: BarChartProps) {
       <svg
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         role="img"
-        aria-labelledby={`${id}-t ${id}-d`}
+        aria-labelledby={`${id}-t`}
+        aria-describedby={`${id}-d`}
         className="sp-chart__svg"
         preserveAspectRatio="xMidYMid meet"
       >

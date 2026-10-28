@@ -171,9 +171,10 @@ function UserRow({ user, isSelf }: { user: User; isSelf: boolean }) {
             variant={user.disabled ? 'secondary' : 'danger'}
             busy={update.isPending}
             onClick={() => update.mutate({ disabled: !user.disabled })}
+            // The visible word starts the accessible name (WCAG 2.5.3 label in name).
+            aria-label={`${user.disabled ? 'Enable' : 'Disable'} ${user.displayName}`}
           >
             {user.disabled ? 'Enable' : 'Disable'}
-            <span className="visually-hidden"> {user.displayName}</span>
           </Button>
         )}
       </td>

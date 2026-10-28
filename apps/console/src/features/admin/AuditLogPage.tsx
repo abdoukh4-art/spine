@@ -15,7 +15,7 @@ import { formatDateTime } from '../../lib/format';
 
 /** `datetime-local` value (`2026-10-28T12:00`, read as UTC) → ISO string, or undefined. */
 export function localInputToIso(value: string): string | undefined {
-  if (!value) return undefined;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return undefined;
   const date = new Date(`${value}:00Z`);
   return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
 }

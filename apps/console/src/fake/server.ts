@@ -1,6 +1,13 @@
 import type { Role, TokenResponse } from '@spine/shared-schema';
 import { createFakeDb, type FakeDb, type FakeUser } from './fixtures';
-import { FakeProblem, memoryCookieJar, problemResponse, publicUser, type CookieJar } from './http';
+import {
+  FakeProblem,
+  memoryCookieJar,
+  problemResponse,
+  publicUser,
+  requireRole,
+  type CookieJar,
+} from './http';
 export { publicUser } from './http';
 import { ROUTES, type FakeRoute } from './routes';
 
@@ -149,6 +156,8 @@ export class FakeSpineServer {
       throw new FakeProblem(404, 'not-found', 'Not found', `No route for ${method} ${path}`);
     const headers = new Headers(init.headers);
     const user = this.authenticate(headers, match.route.access);
+    // Deny by default: every non-public route declares its minimum role (ADR-0017).
+    if (match.route.access !== 'public') requireRole(user, match.route.access);
     const body =
       typeof init.body === 'string' && init.body.length > 0
         ? (JSON.parse(init.body) as unknown)
