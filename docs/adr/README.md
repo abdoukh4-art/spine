@@ -51,6 +51,13 @@ in the same PR. CI checks that every ADR file appears in this index.
 | [0036](0036-alert-lifecycle-resolved-at.md)                       | `resolvedAt` is the first close, never moved; same-status updates are no-ops    | accepted | data                   |
 | [0037](0037-alert-queue-query-semantics.md)                       | Alert queue queries: NULLS LAST cursors, effective severity, parent techniques  | accepted | data, architecture     |
 | [0038](0038-score-projection-ordering-guard.md)                   | The score projection ignores scores older than the one already applied          | accepted | data, architecture     |
+| [0040](0040-enrichment-idempotent-receiver.md)                    | The enrichment handler is an idempotent receiver keyed by event id              | accepted | architecture, data     |
+| [0041](0041-enrichment-merge-keeps-last-success.md)               | Stored enrichment keeps the last success; events carry the merged view          | accepted | data                   |
+| [0042](0042-scoring-publish-only-on-change.md)                    | Scoring is idempotent per (alert, ruleset) and publishes only on change         | accepted | architecture, data     |
+| [0043](0043-scoring-evaluation-context.md)                        | Scoring rules see a summarized evaluation context, not raw results              | accepted | architecture           |
+| [0044](0044-resilience-defaults-and-breaker-semantics.md)         | Resilience defaults and circuit-breaker semantics                               | accepted | architecture, ops      |
+| [0045](0045-deterministic-mock-providers.md)                      | Fixture-driven mock providers with seeded fault injection                       | accepted | testing, architecture  |
+| [0046](0046-ruleset-loaded-once-fail-fast.md)                     | Load the scoring ruleset once at startup and fail fast if invalid               | accepted | architecture, ops      |
 | [0050](0050-playbook-engine-reduce-decide-act.md)                 | Playbook engine as reduce → decide → act, with attempt-scoped idempotency keys  | accepted | architecture           |
 | [0051](0051-executor-hosting-on-bullmq.md)                        | Hosting the executor on BullMQ: one job = one advance, timers as delayed jobs   | accepted | architecture, ops      |
 | [0052](0052-run-lifecycle-dry-run-cancel-timeout.md)              | Run lifecycle semantics: dry-run, cancellation, approval timeouts               | accepted | architecture, security |

@@ -1,0 +1,61 @@
+{
+  "description": "Synthetic CMDB / asset inventory. Hostnames under the reserved corp.example domain; private (RFC 1918 / RFC 4193) addresses only.",
+  "assets": [
+    {
+      "hostname": "dc01.corp.example",
+      "ips": ["10.10.0.10", "fd00::10"],
+      "owner": "identity-team@corp.example",
+      "businessUnit": "IT Infrastructure",
+      "criticality": "critical",
+      "tags": ["domain-controller", "tier0"]
+    },
+    {
+      "hostname": "fin-db01.corp.example",
+      "ips": ["10.20.5.20"],
+      "owner": "dba-team@corp.example",
+      "businessUnit": "Finance",
+      "criticality": "critical",
+      "tags": ["database", "pci"]
+    },
+    {
+      "hostname": "web01.corp.example",
+      "ips": ["10.30.1.15"],
+      "owner": "web-platform@corp.example",
+      "businessUnit": "E-commerce",
+      "criticality": "high",
+      "tags": ["internet-facing"]
+    },
+    {
+      "hostname": "build01.corp.example",
+      "ips": ["10.40.2.30"],
+      "owner": "devops@corp.example",
+      "businessUnit": "Engineering",
+      "criticality": "medium",
+      "tags": ["ci"]
+    },
+    {
+      "hostname": "vuln-scanner01.corp.example",
+      "ips": ["10.99.0.5"],
+      "owner": "secops@corp.example",
+      "businessUnit": "Security",
+      "criticality": "medium",
+      "tags": ["authorized-scanner"]
+    },
+    {
+      "hostname": "ws-1042.corp.example",
+      "ips": ["192.168.10.42"],
+      "owner": "j.doe@corp.example",
+      "businessUnit": "Finance",
+      "criticality": "low",
+      "tags": ["workstation"]
+    },
+    {
+      "hostname": "ws-2077.corp.example",
+      "ips": ["192.168.10.77"],
+      "owner": "a.smith@corp.example",
+      "businessUnit": "Sales",
+      "criticality": "low",
+      "tags": ["workstation", "laptop"]
+    }
+  ]
+}

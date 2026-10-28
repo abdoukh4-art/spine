@@ -107,6 +107,12 @@ erDiagram
         timestamptz fetched_at
     }
 
+    enrichment_processed_events {
+        uuid event_id PK "alert.ingested deliveries handled (ADR-0040)"
+        uuid alert_id "logical → alerts"
+        timestamptz processed_at
+    }
+
     %% ---------- scoring ----------
     alert_scores {
         uuid alert_id PK "logical → alerts"
@@ -115,6 +121,7 @@ erDiagram
         text severity
         jsonb explanation "ScoreExplanation"
         timestamptz computed_at
+        timestamptz source_occurred_at "snapshot time; stale-event guard (ADR-0042)"
     }
 
     %% ---------- playbooks ----------
@@ -219,6 +226,8 @@ erDiagram
 | `simulated_actions (kind, created_at DESC, id DESC)` (0601)                               | `GET /simulated-actions?kind=` keyset pages                                        |
 | sequence `simulated_ticket_seq` (0601)                                                    | `SIM-<n>` ticket numbers of the simulated ticketing adapter                        |
 | `refresh_tokens (family_id)`                                                              | Revoke a whole family on reuse                                                     |
+| `enrichment_processed_events (alert_id)`                                                  | Find (and later purge) the inbox rows of one alert                                 |
+| `alert_scores (alert_id, computed_at DESC)`                                               | `getForAlert`: latest score across ruleset versions                                |
 | `audit_log (occurred_at DESC)`, `(actor_id, occurred_at DESC)`                            | Audit queries                                                                      |
 | `audit_log (action text_pattern_ops, id DESC)` (migration `0101`)                         | `GET /audit-log?action=<prefix>` filter                                            |
 

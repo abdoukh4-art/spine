@@ -1,0 +1,154 @@
+{
+  "description": "Synthetic threat-intelligence reputation data. Only documentation IP ranges (RFC 5737 / RFC 3849), reserved example/.test domains (RFC 2606) and well-known test hashes (EICAR, empty file) are used.",
+  "entries": [
+    {
+      "type": "ipv4",
+      "value": "203.0.113.66",
+      "score": 96,
+      "verdict": "malicious",
+      "tags": ["c2", "cobalt-strike"],
+      "firstSeen": "2026-09-14T08:12:00.000Z"
+    },
+    {
+      "type": "ipv4",
+      "value": "203.0.113.7",
+      "score": 88,
+      "verdict": "malicious",
+      "tags": ["botnet", "brute-force"],
+      "firstSeen": "2026-07-02T19:40:00.000Z"
+    },
+    {
+      "type": "ipv4",
+      "value": "198.51.100.77",
+      "score": 62,
+      "verdict": "suspicious",
+      "tags": ["tor-exit"]
+    },
+    {
+      "type": "ipv4",
+      "value": "198.51.100.23",
+      "score": 48,
+      "verdict": "suspicious",
+      "tags": ["scanner", "mass-scanning"]
+    },
+    {
+      "type": "ipv4",
+      "value": "198.51.100.50",
+      "score": 5,
+      "verdict": "benign",
+      "tags": ["scanner", "authorized-scanner"]
+    },
+    {
+      "type": "ipv4",
+      "value": "192.0.2.10",
+      "score": 0,
+      "verdict": "benign",
+      "tags": ["cdn"]
+    },
+    {
+      "type": "ipv6",
+      "value": "2001:db8::bad",
+      "score": 90,
+      "verdict": "malicious",
+      "tags": ["c2"]
+    },
+    {
+      "type": "ipv6",
+      "value": "2001:db8:1::25",
+      "score": 2,
+      "verdict": "benign",
+      "tags": ["mail-relay"]
+    },
+    {
+      "type": "domain",
+      "value": "evil.example",
+      "score": 92,
+      "verdict": "malicious",
+      "tags": ["phishing", "credential-harvesting"]
+    },
+    {
+      "type": "domain",
+      "value": "login-micros0ft.example",
+      "score": 97,
+      "verdict": "malicious",
+      "tags": ["phishing", "typosquat"]
+    },
+    {
+      "type": "domain",
+      "value": "update-check.test",
+      "score": 85,
+      "verdict": "malicious",
+      "tags": ["c2", "dga"]
+    },
+    {
+      "type": "domain",
+      "value": "files-share.example.net",
+      "score": 50,
+      "verdict": "suspicious",
+      "tags": ["file-sharing", "exfiltration"]
+    },
+    {
+      "type": "domain",
+      "value": "cdn.example.com",
+      "score": 0,
+      "verdict": "benign",
+      "tags": ["cdn"]
+    },
+    {
+      "type": "url",
+      "value": "http://evil.example/login",
+      "score": 95,
+      "verdict": "malicious",
+      "tags": ["phishing"]
+    },
+    {
+      "type": "url",
+      "value": "https://login-micros0ft.example/oauth2/authorize",
+      "score": 97,
+      "verdict": "malicious",
+      "tags": ["phishing", "credential-harvesting"]
+    },
+    {
+      "type": "url",
+      "value": "https://files-share.example.net/upload",
+      "score": 55,
+      "verdict": "suspicious",
+      "tags": ["exfiltration"]
+    },
+    {
+      "type": "sha256",
+      "value": "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+      "score": 100,
+      "verdict": "malicious",
+      "tags": ["eicar", "test-file"]
+    },
+    {
+      "type": "sha256",
+      "value": "b4c1f00d0a3e8f6a2f1c9e7d5b3a1908e6c4a2f0d8b6a4928e6c4a2f0d8b6a49",
+      "score": 98,
+      "verdict": "malicious",
+      "tags": ["ransomware"]
+    },
+    {
+      "type": "sha256",
+      "value": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "score": 0,
+      "verdict": "benign",
+      "tags": ["empty-file"]
+    },
+    {
+      "type": "md5",
+      "value": "44d88612fea8a8f36de82e1278abb02f",
+      "score": 100,
+      "verdict": "malicious",
+      "tags": ["eicar", "test-file"]
+    },
+    {
+      "type": "md5",
+      "value": "d41d8cd98f00b204e9800998ecf8427e",
+      "score": 0,
+      "verdict": "benign",
+      "tags": ["empty-file"]
+    }
+  ]
+}

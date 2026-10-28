@@ -64,12 +64,21 @@ export const FieldConditionSchema = z
     }
   });
 
-/** Recursive condition schema. Nesting depth is bounded by the evaluator (max 16). */
-export const ConditionSchema: z.ZodType<Condition> = z.lazy(() =>
-  z.union([
-    z.object({ all: z.array(ConditionSchema).min(1).max(64) }).strict(),
-    z.object({ any: z.array(ConditionSchema).min(1).max(64) }).strict(),
-    z.object({ not: ConditionSchema }).strict(),
-    FieldConditionSchema,
-  ]),
-);
+/**
+ * Recursive condition schema. Nesting depth is bounded by the evaluator (max 16).
+ * The `id` metadata makes OpenAPI generation emit it once as `#/components/schemas/Condition`
+ * and reference it, instead of a dangling `$ref` for the recursion.
+ */
+export const ConditionSchema: z.ZodType<Condition> = z
+  .lazy(() =>
+    z.union([
+      z.object({ all: z.array(ConditionSchema).min(1).max(64) }).strict(),
+      z.object({ any: z.array(ConditionSchema).min(1).max(64) }).strict(),
+      z.object({ not: ConditionSchema }).strict(),
+      FieldConditionSchema,
+    ]),
+  )
+  .meta({
+    id: 'Condition',
+    description: 'A condition of the shared predicate language (ADR-0013)',
+  });
