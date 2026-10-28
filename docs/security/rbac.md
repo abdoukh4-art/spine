@@ -31,5 +31,12 @@ and tested in `apps/api/test/unit/platform/http.test.ts`.
 | Playbooks            | `POST /playbooks`, `PATCH /playbooks/:id`                                                                       | admin                                                         |
 | Metrics              | `GET /metrics/summary`                                                                                          | viewer                                                        |
 
-Keep this table in sync with the code. The auth module's RBAC matrix test reads the live
-route table and compares it to the expected policies.
+Keep this table in sync with the code. The auth module's RBAC matrix test
+([rbac-matrix.test.ts](../../apps/api/test/unit/auth/rbac-matrix.test.ts)) builds the full
+application, reads every route's `config.access` and compares it to its `EXPECTED` table,
+which mirrors this page. Adding a route means adding a line to both.
+
+Authorization runs in `onRequest`, before body parsing and validation, so an anonymous or
+under-privileged caller always gets 401/403, never a 400 that reveals the request schema
+([ADR-0067](../adr/0067-authorize-before-body-parsing.md)). The cookie endpoints answer
+403 when the CSRF header or Origin check fails ([ADR-0061](../adr/0061-csrf-origin-required-in-every-environment.md)).
