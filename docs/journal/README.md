@@ -8,3 +8,4 @@ a mentor would explain their own week: mistakes included, because that's where t
 | ---------- | ----------------------------------------------------------------- |
 | 2026-10-28 | [Day 0: foundations before code](2026-10-28-day-0-foundations.md) |
 | 2026-10-28 | [Auth and audit: tokens, races and hooks](2026-10-28-auth.md)     |
+| 2026-10-28 | [Ingestion and alerts](2026-10-28-ingestion-alerts.md)            |
