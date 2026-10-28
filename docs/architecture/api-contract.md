@@ -36,6 +36,24 @@ Auth column: `—` = public, `V` = viewer+, `A` = analyst+, `Ad` = admin only,
 
 `User = {id, email, displayName, role: viewer|analyst|admin, disabled, createdAt, lastLoginAt|null}`. The password hash is **never** serialized (the response schema excludes it).
 
+Auth details (see [modules/auth.md](../modules/auth.md)):
+
+- `POST /auth/login`: every failure (unknown email, wrong password, disabled account) is
+  `401` with detail `invalid credentials`. More than `AUTH_LOGIN_MAX_PER_MINUTE` (10)
+  attempts per minute per client IP **or** per normalized email give `429 rate-limited`
+  with `Retry-After`. Token responses carry `Cache-Control: no-store`.
+- `POST /auth/refresh` and `/auth/logout`: `403 forbidden` (`CSRF check failed`) unless
+  `X-Spine-CSRF: 1` is present **and** `Origin` is exactly one of `CORS_ALLOWED_ORIGINS`
+  (a missing Origin is rejected in every environment, [ADR-0061](../adr/0061-csrf-origin-required-in-every-environment.md)).
+  A failed refresh clears the cookie. Logout is idempotent (`204` even without a cookie).
+- `POST /users`: `400` when the password fails the policy (12–128 characters, not a
+  common password, must not contain the email name), `409` when the email exists (case-insensitive).
+- `PATCH /users/:id`: `409 conflict` if the change would leave no active admin
+  ([ADR-0065](../adr/0065-last-active-admin-protection.md)). Disabling a user revokes their
+  refresh tokens and rejects their access tokens within 30 s (instantly on the same replica).
+- `GET /audit-log`: newest first; `action` is a **prefix** filter (e.g. `auth.` or
+  `PATCH /api/v1/users`), `from` inclusive, `to` exclusive.
+
 ## Ingestion (module: ingestion)
 
 | Method | Path                                                    | Auth                                                                                                     | Request                                                                        | Response                                                                                                                          |
@@ -73,20 +91,27 @@ state may go directly to `resolved` or `false_positive`. Closed alerts may be **
 
 ## Playbooks (module: playbooks)
 
-| Method | Path                             | Auth | Request                                                     | Response                                                                                    |
-| ------ | -------------------------------- | ---- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| GET    | `/api/v1/playbooks`              | V    | —                                                           | `PlaybookSummary[]` (latest version of each, with `enabled`)                                |
-| GET    | `/api/v1/playbooks/:id`          | V    | `?version`                                                  | `PlaybookRecord` (definition + metadata)                                                    |
-| POST   | `/api/v1/playbooks/validate`     | A    | `{source: string, format: yaml\|json}`                      | `200 {valid: true, definition}` or `422 problem` with `errors[]` (path + message)           |
-| POST   | `/api/v1/playbooks`              | Ad   | `{source, format}`                                          | `201 PlaybookRecord` (new immutable version)                                                |
-| PATCH  | `/api/v1/playbooks/:id`          | Ad   | `{enabled}`                                                 | `200 PlaybookSummary`                                                                       |
-| POST   | `/api/v1/playbooks/:id/runs`     | A    | `{alertId, dryRun?: boolean}`                               | `202 {runId}`                                                                               |
-| GET    | `/api/v1/runs`                   | V    | `?playbookId&alertId&status&cursor&limit`                   | `Page<RunSummary>`                                                                          |
-| GET    | `/api/v1/runs/:id`               | V    | —                                                           | `RunDetail` = summary + `events[]` (the full timeline) + `steps[]` (derived per-step state) |
-| POST   | `/api/v1/runs/:id/cancel`        | A    | —                                                           | `202`                                                                                       |
-| GET    | `/api/v1/approvals`              | V    | `?status=pending\|approved\|rejected\|expired&cursor&limit` | `Page<Approval>`                                                                            |
-| POST   | `/api/v1/approvals/:id/decision` | A    | `{decision: approve\|reject, comment?}`                     | `200 Approval`; `409` if already decided or expired                                         |
-| GET    | `/api/v1/simulated-actions`      | V    | `?kind&cursor&limit`                                        | `Page<SimulatedAction>` (what the mock firewall/ticketing/chat "did")                       |
+| Method | Path                             | Auth | Request                                                     | Response                                                                                                |
+| ------ | -------------------------------- | ---- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/v1/playbooks`              | V    | —                                                           | `PlaybookSummary[]` (latest version of each, with `enabled`)                                            |
+| GET    | `/api/v1/playbooks/:id`          | V    | `?version`                                                  | `PlaybookRecord` (definition + metadata)                                                                |
+| POST   | `/api/v1/playbooks/validate`     | A    | `{source: string, format: yaml\|json}`                      | `200 {valid: true, definition}` or `422 problem` with `errors[]` (path + message)                       |
+| POST   | `/api/v1/playbooks`              | Ad   | `{source, format}`                                          | `201 PlaybookRecord` (new immutable version)                                                            |
+| PATCH  | `/api/v1/playbooks/:id`          | Ad   | `{enabled}`                                                 | `200 PlaybookSummary`                                                                                   |
+| POST   | `/api/v1/playbooks/:id/runs`     | A    | `{alertId, dryRun?: boolean}`                               | `202 {runId}`                                                                                           |
+| GET    | `/api/v1/runs`                   | V    | `?playbookId&alertId&status&cursor&limit`                   | `Page<RunSummary>`                                                                                      |
+| GET    | `/api/v1/runs/:id`               | V    | —                                                           | `RunDetail` = summary + `events[]` (the full timeline) + `steps[]` (derived per-step state)             |
+| POST   | `/api/v1/runs/:id/cancel`        | A    | —                                                           | `202 RunSummary` (status `cancelled`); `409` if already terminal. No compensation (ADR-0052)            |
+| GET    | `/api/v1/approvals`              | V    | `?status=pending\|approved\|rejected\|expired&cursor&limit` | `Page<Approval>`                                                                                        |
+| POST   | `/api/v1/approvals/:id/decision` | A    | `{decision: approve\|reject, comment?}`                     | `200 Approval`; `409` if already decided or expired; `403` if `approverRole` is above the caller's role |
+| GET    | `/api/v1/simulated-actions`      | V    | `?kind&cursor&limit`                                        | `Page<SimulatedAction>` (what the mock firewall/ticketing/chat "did")                                   |
+
+Notes (playbooks): `POST /playbooks` requires `metadata.version` greater than every stored
+version of that playbook (`409` otherwise), so the stored record and its source text agree.
+Manual runs are allowed on disabled playbooks (`enabled` only gates automatic triggers).
+Conditions address the score as `score.score` and enrichment through a summary
+(`enrichment.verdicts.<indicatorType>`, `enrichment.malicious`, `enrichment.suspicious`), see
+[ADR-0053](../adr/0053-run-snapshot-and-evaluation-context.md).
 
 ## Metrics (module: metrics)
 

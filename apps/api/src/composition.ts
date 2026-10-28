@@ -4,7 +4,7 @@ import { createDatabase, pingDatabase, type Db } from './platform/db/database.js
 import { migrationsUpToDate } from './platform/db/migrator.js';
 import { OutboxEventPublisher } from './platform/events/outbox.js';
 import { EventSubscriptions, type EventPublisher } from './platform/events/types.js';
-import { rejectAllAuthenticator, type Authenticator } from './platform/http/access.js';
+import type { Authenticator } from './platform/http/access.js';
 import { createLogger, type Logger } from './platform/logger.js';
 import type { PlatformDeps, SpineModule } from './platform/module.js';
 import { systemClock, uuidV7Generator, type Clock, type IdGenerator } from './platform/runtime.js';
@@ -63,7 +63,19 @@ export function createApplication(
   const ingestion = createIngestionModule(deps);
   const enrichment = createEnrichmentModule(deps);
   const scoring = createScoringModule(deps);
-  const playbooks = createPlaybooksModule(deps);
+  const playbooks = createPlaybooksModule(deps, {
+    // INTEGRATION: replace with enrichment public API (enrichAlert) in Phase 2.
+    enrichment: { enrich: () => Promise.resolve([]) },
+    // INTEGRATION: replace with scoring public API (scoreAndStore / preview when !persist) in Phase 2.
+    scoring: { score: () => Promise.resolve(null) },
+    // INTEGRATION: replace with alerts public API (setStatus, mapping ConflictError to changed:false) in Phase 2.
+    alertStatus: {
+      setStatus: () => Promise.resolve({ changed: false, reason: 'alerts module not wired yet' }),
+    },
+    // INTEGRATION: replace with alerts.get + enrichment.getForAlert + scoring.getForAlert in Phase 2.
+    alertSnapshot: { get: () => Promise.resolve(null) },
+    audit: auth.api.audit,
+  });
   const metrics = createMetricsModule(deps);
 
   const modules = [auth, alerts, ingestion, enrichment, scoring, playbooks, metrics].map(
@@ -80,5 +92,5 @@ export function createApplication(
   };
   for (const m of modules) Object.assign(readinessChecks, m.readinessChecks?.() ?? {});
 
-  return { deps, modules, subscriptions, authenticator: rejectAllAuthenticator, readinessChecks };
+  return { deps, modules, subscriptions, authenticator: auth.api.authenticator, readinessChecks };
 }

@@ -42,6 +42,20 @@ in the same PR. CI checks that every ADR file appears in this index.
 | [0026](0026-mttd-mttr-definitions.md)                             | Precise definitions of MTTD, MTTR and playbook success rate                                  | accepted | data                   |
 | [0027](0027-workspace-packages-as-source-and-esbuild-bundling.md) | Consume workspace packages as TS source; bundle the API with esbuild                         | accepted | architecture, process  |
 | [0028](0028-security-patches-override-version-maturity.md)        | Security patches override the "mature version" rule (amends 0022)                            | accepted | security, process      |
+| [0050](0050-playbook-engine-reduce-decide-act.md)                 | Playbook engine as reduce → decide → act, with attempt-scoped idempotency keys               | accepted | architecture           |
+| [0051](0051-executor-hosting-on-bullmq.md)                        | Hosting the executor on BullMQ: one job = one advance, timers as delayed jobs                | accepted | architecture, ops      |
+| [0052](0052-run-lifecycle-dry-run-cancel-timeout.md)              | Run lifecycle semantics: dry-run, cancellation, approval timeouts                            | accepted | architecture, security |
+| [0053](0053-run-snapshot-and-evaluation-context.md)               | Runs carry an alert snapshot; conditions see an enrichment summary                           | accepted | architecture, data     |
+| [0054](0054-locked-down-playbook-source-parsing.md)               | Locked-down YAML/JSON parsing for playbook sources                                           | accepted | security               |
+| [0055](0055-run-projection-and-outbox-in-append-transaction.md)   | Rebuild the run projection and emit domain events inside every append                        | accepted | data, architecture     |
+| [0060](0060-authenticator-reloads-user-with-short-cache.md)       | Authenticator reloads the user per request (≤ 30 s cache)                                    | accepted | security, architecture |
+| [0061](0061-csrf-origin-required-in-every-environment.md)         | CSRF: custom header + allow-listed Origin in every environment                               | accepted | security               |
+| [0062](0062-strict-refresh-rotation-under-row-lock.md)            | Strict refresh rotation under a row lock, no grace window                                    | accepted | security, data         |
+| [0063](0063-two-dimensional-login-throttle.md)                    | Two-dimensional login throttle (Redis fixed window, in-memory fallback)                      | accepted | security, architecture |
+| [0064](0064-audit-log-write-policy.md)                            | Audit write policy: best-effort HTTP trail, no bodies, hashed emails                         | accepted | security, data         |
+| [0065](0065-last-active-admin-protection.md)                      | Always keep at least one active admin                                                        | accepted | security, data         |
+| [0066](0066-first-run-admin-bootstrap.md)                         | First-run admin bootstrap from env, only on an empty users table                             | accepted | security, ops          |
+| [0067](0067-authorize-before-body-parsing.md)                     | Authorize in onRequest and attribute forbidden requests                                      | accepted | security, architecture |
 | [0080](0080-telemetry-bootstrap-and-metric-conventions.md)        | Telemetry bootstrap: NodeSDK preload, Prometheus pull, optional OTLP, verified metric naming | accepted | ops                    |
 | [0081](0081-container-images-distroless-single-image.md)          | Container images: one distroless non-root image for API and worker                           | accepted | ops, security          |
 | [0082](0082-nginx-edge-proxy.md)                                  | nginx as the edge: SPA hosting, reverse proxy, TLS termination                               | accepted | ops, security          |
