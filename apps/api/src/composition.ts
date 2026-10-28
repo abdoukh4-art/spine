@@ -64,7 +64,11 @@ export function createApplication(
   const enrichment = createEnrichmentModule(deps);
   const scoring = createScoringModule(deps);
   const playbooks = createPlaybooksModule(deps);
-  const metrics = createMetricsModule(deps);
+  // INTEGRATION: replace with a read model built on the alerts + playbooks public APIs (Phase 2).
+  const metrics = createMetricsModule(deps, {
+    alertsReceivedBetween: () => Promise.resolve([]),
+    runsBetween: () => Promise.resolve([]),
+  });
 
   const modules = [auth, alerts, ingestion, enrichment, scoring, playbooks, metrics].map(
     (m) => m.module,
