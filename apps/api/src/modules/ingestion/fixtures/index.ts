@@ -17,7 +17,7 @@ export function suricataEveLines(): string[] {
 
 /** CEF lines, some with syslog prefixes (RFC 3164 and RFC 5424). */
 export function cefLines(): string[] {
-  return lines('./cef.log');
+  return lines('./cef.txt');
 }
 
 /** Canonical alert JSON lines. */

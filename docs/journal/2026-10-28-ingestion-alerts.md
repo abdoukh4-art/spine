@@ -90,6 +90,13 @@ the raw body anyway for the HMAC. A fixture uses exactly that number, and the te
   short enough not to widen the index columns, and put the event-catalog change in a note
   below the table instead of in it.
 
+- _Green locally, red in CI._ The first CI run failed `test-unit` and `test-integration` while
+  every local run passed. The CI logs were not downloadable from this sandbox, so I reasoned
+  from "what does a fresh checkout have that my worktree doesn't?" → `git status --ignored`:
+  the CEF fixture was named `cef.log`, and the root `.gitignore` ignores `*.log`. It existed on
+  my disk and was never committed. Renamed to `cef.txt`. _Lesson:_ before blaming CI, diff the
+  clean checkout against your working tree.
+
 ## Decisions I'd flag to a reviewer
 
 - **Suricata identity is `flow_id:signature_id`**, not `flow_id` as the brief said: two signatures
