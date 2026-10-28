@@ -33,6 +33,8 @@ export interface Application {
   subscriptions: EventSubscriptions;
   authenticator: Authenticator;
   readinessChecks: Record<string, () => Promise<boolean>>;
+  /** The Alerts public API, for admin processes such as the demo seeder. */
+  alertsApi: AlertsPublicApi;
 }
 
 export interface ApplicationOverrides {
@@ -109,7 +111,14 @@ export function createApplication(
   };
   for (const m of modules) Object.assign(readinessChecks, m.readinessChecks?.() ?? {});
 
-  return { deps, modules, subscriptions, authenticator: auth.api.authenticator, readinessChecks };
+  return {
+    deps,
+    modules,
+    subscriptions,
+    authenticator: auth.api.authenticator,
+    readinessChecks,
+    alertsApi: alerts.api,
+  };
 }
 
 /**

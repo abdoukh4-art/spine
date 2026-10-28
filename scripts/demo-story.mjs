@@ -29,7 +29,7 @@ const APPROVE = !args.includes('--no-approve');
 
 loadDotEnv('.env');
 const ANALYST_EMAIL = process.env.SPINE_DEMO_ANALYST_EMAIL ?? 'analyst@spine.test';
-const ANALYST_PASSWORD = process.env.SPINE_DEMO_ANALYST_PASSWORD ?? 'analyst-demo-password-1';
+const ANALYST_PASSWORD = process.env.SPINE_DEMO_ANALYST_PASSWORD ?? 'night-owl-demo-dana-2026';
 const sources = JSON.parse(process.env.WEBHOOK_SOURCES_JSON ?? '{}');
 
 const c = {
@@ -142,12 +142,9 @@ async function main() {
     severity: 'medium',
     occurredAt: minutesAgo(42),
     user: { name: 'jdoe', email: 'j.doe@corp.example' },
-    host: { hostname: 'fin-ws-042', ips: ['10.20.4.42'] },
-    url: 'https://login-corp-example.invalid/session/verify',
-    indicators: [
-      { type: 'domain', value: 'login-corp-example.invalid' },
-      { type: 'email', value: 'it-support@corp-example.invalid' },
-    ],
+    host: { hostname: 'ws-1042.corp.example', ips: ['192.168.10.42'] },
+    url: 'https://login-micros0ft.example/oauth2/authorize',
+    indicators: [{ type: 'domain', value: 'login-micros0ft.example' }],
     mitre: [
       {
         tacticId: 'TA0001',
@@ -159,21 +156,21 @@ async function main() {
   });
   say(`   alert ${phishing.alertId} (${phishing.status})`);
 
-  step(2, 'EDR → credential dumping on the same (critical) workstation');
+  step(2, 'EDR → beacon + credential dumping on the finance database server (a critical asset)');
   const creds = await webhook('edr', {
     source: { vendor: 'Acme', product: 'EDR', sourceAlertId: `EDR-${runTag}-7731` },
-    title: 'LSASS memory access by suspicious process (possible Mimikatz)',
-    category: 'credential_access',
+    title: 'Cobalt Strike beacon and LSASS memory access on fin-db01',
+    category: 'malware',
     severity: 'high',
     occurredAt: minutesAgo(30),
     user: { name: 'jdoe' },
-    host: { hostname: 'fin-ws-042', ips: ['10.20.4.42'], os: 'Windows 11' },
+    host: { hostname: 'fin-db01.corp.example', ips: ['10.20.5.20'], os: 'Windows Server 2022' },
     file: {
       name: 'svch0st.exe',
-      sha256: '5f2b7c0e3a1d9e8f4b6a2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f',
+      sha256: '275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f',
     },
     network: {
-      sourceIp: '10.20.4.42',
+      sourceIp: '10.20.5.20',
       destinationIp: '203.0.113.66',
       destinationPort: 443,
       protocol: 'tcp',
@@ -202,7 +199,7 @@ async function main() {
       timestamp: minutesAgo(25 - i * 5),
       flow_id: Number(`7${runTag.replace(/\D/g, '').slice(0, 6) || '1'}`),
       event_type: 'alert',
-      src_ip: '10.20.4.42',
+      src_ip: '10.20.5.20',
       src_port: 50122 + i,
       dest_ip: '203.0.113.66',
       dest_port: 443,
@@ -219,10 +216,10 @@ async function main() {
     say(`   beacon ${i + 1}/5 → alert ${beacon.alertId} (${beacon.status})`);
   }
 
-  step(4, 'VPN concentrator → brute force from 198.51.100.23 (CEF batch import)');
+  step(4, 'VPN concentrator → brute force from 203.0.113.7 (CEF batch import)');
   const cef = [
-    `<134>Oct 28 09:12:01 vpn01 CEF:0|Acme|VPN|5.1|4625|Repeated authentication failures|7|src=198.51.100.23 dst=10.0.0.10 dpt=443 suser=admin cnt=57 rt=${Date.now() - 20 * 60_000} cs1Label=tag cs1=${runTag}`,
-    `<134>Oct 28 09:13:44 vpn01 CEF:0|Acme|VPN|5.1|4624|Successful login after failures|8|src=198.51.100.23 dst=10.0.0.10 dpt=443 suser=svc-backup rt=${Date.now() - 18 * 60_000} cs1Label=tag cs1=${runTag}`,
+    `<134>Oct 28 09:12:01 vpn01 CEF:0|Acme|VPN|5.1|4625|Repeated authentication failures|7|src=203.0.113.7 dst=10.0.0.10 dpt=443 suser=admin cnt=57 rt=${Date.now() - 20 * 60_000} cs1Label=tag cs1=${runTag}`,
+    `<134>Oct 28 09:13:44 vpn01 CEF:0|Acme|VPN|5.1|4624|Successful login after failures|8|src=203.0.113.7 dst=10.0.0.10 dpt=443 suser=svc-backup rt=${Date.now() - 18 * 60_000} cs1Label=tag cs1=${runTag}`,
   ].join('\n');
   const batch = await http('POST', '/api/v1/ingest/batch?format=cef', {
     token,
@@ -243,7 +240,8 @@ async function main() {
       category: 'reconnaissance',
       severity: 'low',
       occurredAt: minutesAgo(10),
-      network: { sourceIp: '10.0.9.5', destinationIp: '10.20.4.0', protocol: 'tcp' },
+      host: { hostname: 'vuln-scanner01.corp.example', ips: ['10.99.0.5'] },
+      network: { sourceIp: '10.99.0.5', destinationIp: '10.20.5.20', protocol: 'tcp' },
       labels: { scanner: 'nessus-internal' },
       mitre: [{ tacticId: 'TA0043', techniqueId: 'T1595' }],
     },
@@ -273,7 +271,11 @@ async function main() {
     'a pending approval',
     async () => {
       const page = await http('GET', '/api/v1/approvals?status=pending', { token });
-      return page.items.find((a) => ids.includes(a.alertId)) ?? null;
+      return (
+        page.items.find(
+          (a) => a.alertId === creds.alertId && a.playbookId === 'malware-containment',
+        ) ?? null
+      );
     },
     { timeoutMs: 90_000 },
   );

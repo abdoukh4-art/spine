@@ -14,3 +14,5 @@ test-results/
 infra/tls/*.pem
 infra/tls/*.key
 .claude/
+e2e/test-results/
+e2e/playwright-report/

@@ -136,6 +136,7 @@ describe('evaluation context', () => {
         businessUnit: null,
         tags: ['tier0'],
       },
+      assetTags: ['tier0'],
       geo: { countries: ['DE', 'NL'], asns: [64500], isTor: true, torIps: ['198.51.100.77'] },
       failedProviders: ['geo'],
     });
@@ -161,6 +162,17 @@ describe('evaluation context', () => {
       maliciousIndicators: ['203.0.113.7'],
       geo: { countries: ['FR'], asns: [64496, 64500], isTor: false, torIps: [] },
     });
+  });
+
+  it('keeps the tags of every asset, not only the most critical one', () => {
+    // Found by the demo: a scan FROM the authorized scanner TO a critical server kept only the
+    // server as `enrichment.asset`, so the scanner's `authorized-scanner` tag was lost.
+    const context = buildEvaluationContext(testAlert(), [
+      results.asset('critical', ['payments']),
+      results.asset('low', ['authorized-scanner']),
+    ]);
+    expect(context.enrichment.asset?.criticality).toBe('critical');
+    expect(context.enrichment.assetTags).toEqual(['authorized-scanner', 'payments']);
   });
 
   it('is empty-but-well-formed without enrichment', () => {

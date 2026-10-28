@@ -144,5 +144,6 @@ rules:
     when:
       any:
         - { field: enrichment.reputationTags, op: contains, value: authorized-scanner }
-        - { field: enrichment.asset.tags, op: contains, value: authorized-scanner }
+        - { field: enrichment.assetTags, op: contains, value: authorized-scanner }
     points: -25
+    evidenceField: enrichment.assetTags

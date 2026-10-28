@@ -1,0 +1,16 @@
+{
+  "name": "@spine/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "description": "End-to-end browser tests against a running Spine stack (make up && make demo)",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.10.2",
+    "@playwright/test": "1.63.0"
+  }
+}
