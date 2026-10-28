@@ -64,12 +64,12 @@ state may go directly to `resolved` or `false_positive`. Closed alerts may be **
 
 ## Enrichment & scoring (modules: enrichment, scoring)
 
-| Method | Path                           | Auth | Purpose                                                                                     |
-| ------ | ------------------------------ | ---- | ------------------------------------------------------------------------------------------- |
-| POST   | `/api/v1/alerts/:id/enrich`    | A    | Re-run enrichment (e.g. after a provider outage). `202`.                                    |
-| GET    | `/api/v1/enrichment/providers` | V    | Provider list with circuit-breaker state, as `{name, state: closed\|open\|half_open, ...}`. |
-| GET    | `/api/v1/scoring/ruleset`      | V    | The active ruleset (version + rules) for transparency.                                      |
-| POST   | `/api/v1/scoring/preview`      | A    | `{alert, enrichments}` → `ScoreExplanation` without persisting. Useful for authoring rules. |
+| Method | Path                           | Auth | Purpose                                                                                                                                                                                                                                      |
+| ------ | ------------------------------ | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/api/v1/alerts/:id/enrich`    | A    | Re-run enrichment (e.g. after a provider outage). `202 {alertId, enrichments}`: the alert's **merged** stored results ([ADR-0041](../adr/0041-enrichment-merge-keeps-last-success.md)); re-scoring follows asynchronously. `404` if unknown. |
+| GET    | `/api/v1/enrichment/providers` | V    | `ProviderStatus[]` = `{name, supports[], circuit: closed\|open\|half_open, inFlight, queued}`. State is per process (this is the API process's view, [ADR-0044](../adr/0044-resilience-defaults-and-breaker-semantics.md)).                  |
+| GET    | `/api/v1/scoring/ruleset`      | V    | The active ruleset (`version`, `baseline`, `rules[]`) for transparency.                                                                                                                                                                      |
+| POST   | `/api/v1/scoring/preview`      | A    | `{alert: Alert \| CanonicalAlertInput, enrichments?: EnrichmentResult[]}` → `200 ScoreExplanation`, nothing persisted. Useful for authoring rules.                                                                                           |
 
 ## Playbooks (module: playbooks)
 

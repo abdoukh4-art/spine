@@ -106,6 +106,12 @@ erDiagram
         timestamptz fetched_at
     }
 
+    enrichment_processed_events {
+        uuid event_id PK "alert.ingested deliveries handled (ADR-0040)"
+        uuid alert_id "logical → alerts"
+        timestamptz processed_at
+    }
+
     %% ---------- scoring ----------
     alert_scores {
         uuid alert_id PK "logical → alerts"
@@ -114,6 +120,7 @@ erDiagram
         text severity
         jsonb explanation "ScoreExplanation"
         timestamptz computed_at
+        timestamptz source_occurred_at "snapshot time; stale-event guard (ADR-0042)"
     }
 
     %% ---------- playbooks ----------
@@ -213,6 +220,8 @@ erDiagram
 | `playbook_runs (status) WHERE status NOT IN (terminal)`                                   | Startup reconciler finds runs to resume                                            |
 | `approvals (status, requested_at)`                                                        | Approval inbox                                                                     |
 | `refresh_tokens (family_id)`                                                              | Revoke a whole family on reuse                                                     |
+| `enrichment_processed_events (alert_id)`                                                  | Find (and later purge) the inbox rows of one alert                                 |
+| `alert_scores (alert_id, computed_at DESC)`                                               | `getForAlert`: latest score across ruleset versions                                |
 | `audit_log (occurred_at DESC)`, `(actor_id, occurred_at DESC)`                            | Audit queries                                                                      |
 
 ## Mapping to ECS / OCSF

@@ -42,3 +42,10 @@ in the same PR. CI checks that every ADR file appears in this index.
 | [0026](0026-mttd-mttr-definitions.md)                             | Precise definitions of MTTD, MTTR and playbook success rate                     | accepted | data                   |
 | [0027](0027-workspace-packages-as-source-and-esbuild-bundling.md) | Consume workspace packages as TS source; bundle the API with esbuild            | accepted | architecture, process  |
 | [0028](0028-security-patches-override-version-maturity.md)        | Security patches override the "mature version" rule (amends 0022)               | accepted | security, process      |
+| [0040](0040-enrichment-idempotent-receiver.md)                    | The enrichment handler is an idempotent receiver keyed by event id              | accepted | architecture, data     |
+| [0041](0041-enrichment-merge-keeps-last-success.md)               | Stored enrichment keeps the last success; events carry the merged view          | accepted | data                   |
+| [0042](0042-scoring-publish-only-on-change.md)                    | Scoring is idempotent per (alert, ruleset) and publishes only on change         | accepted | architecture, data     |
+| [0043](0043-scoring-evaluation-context.md)                        | Scoring rules see a summarized evaluation context, not raw results              | accepted | architecture           |
+| [0044](0044-resilience-defaults-and-breaker-semantics.md)         | Resilience defaults and circuit-breaker semantics                               | accepted | architecture, ops      |
+| [0045](0045-deterministic-mock-providers.md)                      | Fixture-driven mock providers with seeded fault injection                       | accepted | testing, architecture  |
+| [0046](0046-ruleset-loaded-once-fail-fast.md)                     | Load the scoring ruleset once at startup and fail fast if invalid               | accepted | architecture, ops      |
