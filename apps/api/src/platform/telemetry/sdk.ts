@@ -1,5 +1,5 @@
 import FastifyOtel from '@fastify/otel';
-import type { IncomingMessage } from 'node:http';
+import type { IncomingMessage, RequestOptions } from 'node:http';
 import { metrics as otelMetrics } from '@opentelemetry/api';
 import {
   CompositePropagator,
@@ -78,15 +78,34 @@ export function metricViews(): sdkMetrics.ViewOptions[] {
   ];
 }
 
+/**
+ * True for outgoing requests to the OTLP collector itself. Without this, every span
+ * export would be measured as an application HTTP client call (http_client_* metrics).
+ */
+export function isExporterRequest(
+  otlpEndpoint: string | undefined,
+  request: Pick<RequestOptions, 'hostname' | 'host'>,
+): boolean {
+  if (!otlpEndpoint) return false;
+  const target = request.hostname ?? request.host?.split(':')[0];
+  return target === new URL(otlpEndpoint).hostname;
+}
+
 /** The auto-instrumentations Spine enables. Kept explicit: every one has a cost. */
-export function instrumentations(): Instrumentation[] {
+export function instrumentations(config: TelemetryConfig): Instrumentation[] {
   return [
     new HttpInstrumentation({
       ignoreIncomingRequestHook: (req: IncomingMessage) =>
         UNTRACED_PATHS.has((req.url ?? '').split('?')[0] ?? ''),
+      ignoreOutgoingRequestHook: (req: RequestOptions) =>
+        isExporterRequest(config.OTEL_EXPORTER_OTLP_ENDPOINT, req),
     }),
     // Route-level spans via Fastify's diagnostics channel: no change to server.ts needed.
-    new FastifyOtel.FastifyOtelInstrumentation({ registerOnInitialization: true }),
+    // One span for the handler; per-hook spans (helmet, cors …) are noise for us.
+    new FastifyOtel.FastifyOtelInstrumentation({
+      registerOnInitialization: true,
+      instrumentHooks: false,
+    }),
     // Only trace queries/commands that belong to a traced operation: the outbox relay
     // polls every 200 ms and BullMQ issues blocking Redis commands continuously, which
     // would otherwise produce thousands of orphan root spans per minute.
@@ -150,7 +169,7 @@ export function startTelemetry(config: TelemetryConfig, logger: Logger): Telemet
     spanProcessors: spanProcessorsFor(config),
     // Explicitly no OTel log export: logs are pino JSON on stdout (twelve-factor XI).
     logRecordProcessors: [],
-    instrumentations: instrumentations(),
+    instrumentations: instrumentations(config),
   });
   sdk.start();
   registerProcessMetrics(otelMetrics.getMeter('spine'));

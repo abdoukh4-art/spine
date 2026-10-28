@@ -27,6 +27,7 @@ import {
 } from '../../../src/platform/telemetry/index.js';
 import { loggerOptions } from '../../../src/platform/logger.js';
 import {
+  isExporterRequest,
   metricViews,
   SECONDS_BUCKETS,
   spanProcessorsFor,
@@ -221,6 +222,14 @@ describe('SDK configuration (pure parts)', () => {
       spanProcessorsFor({ ...base, OTEL_EXPORTER_OTLP_ENDPOINT: 'http://jaeger:4318/' })[0]
         ?.constructor.name,
     ).toBe('BatchSpanProcessor');
+  });
+
+  it("does not instrument the exporter's own requests to the collector", () => {
+    const endpoint = 'http://jaeger:4318';
+    expect(isExporterRequest(endpoint, { hostname: 'jaeger' })).toBe(true);
+    expect(isExporterRequest(endpoint, { host: 'jaeger:4318' })).toBe(true);
+    expect(isExporterRequest(endpoint, { hostname: 'threat-intel.example' })).toBe(false);
+    expect(isExporterRequest(undefined, { hostname: 'jaeger' })).toBe(false);
   });
 
   it('gives every spine_*_seconds histogram second-scale buckets', () => {
