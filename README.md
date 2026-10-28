@@ -95,13 +95,13 @@ C4 diagrams, sequence diagrams, the ERD and the event catalog: [docs/architectur
 
 ## Quality, measured
 
-|             |                                                                                                                                                                                      |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Tests       | ~740 unit/property tests (Vitest + fast-check), 150 integration tests (Testcontainers Postgres + Redis), OpenAPI contract tests, 4 Playwright journeys with axe accessibility checks |
-| Coverage    | playbook-engine 99.6 % lines, enrichers 99.5 %, shared-schema 98.9 %, domain folders 98–100 %                                                                                        |
-| Performance | 200 alerts/s accepted with 0 errors, p95 167 ms; ingest → scored p95 125 ms at 20/s (one 4-core host, [details](docs/operations/performance.md))                                     |
-| Security    | adversarial review with 7 findings (5 fixed, 2 accepted) ([report](docs/security/review-2026-10-28.md)); CodeQL, gitleaks, pnpm audit, Trivy on both images, SBOM in CI              |
-| CI          | 17 required checks including a full-stack e2e job ([ADR-0025](docs/adr/0025-git-workflow-and-ci-gates.md))                                                                           |
+|             |                                                                                                                                                                                     |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tests       | 745 unit/property tests (Vitest + fast-check), 150 integration tests (Testcontainers Postgres + Redis), OpenAPI contract tests, 4 Playwright journeys with axe accessibility checks |
+| Coverage    | playbook-engine 99.6 % lines, enrichers 99.5 %, shared-schema 98.9 %, domain folders 98–100 %                                                                                       |
+| Performance | 200 alerts/s accepted with 0 errors, p95 167 ms; ingest → scored p95 125 ms at 20/s (one 4-core host, [details](docs/operations/performance.md))                                    |
+| Security    | adversarial review with 7 findings (5 fixed, 2 accepted) ([report](docs/security/review-2026-10-28.md)); CodeQL, gitleaks, pnpm audit, Trivy on both images, SBOM in CI             |
+| CI          | 17 required checks including a full-stack e2e job ([ADR-0025](docs/adr/0025-git-workflow-and-ci-gates.md))                                                                          |
 
 ## Learn from it
 

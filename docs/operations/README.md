@@ -11,7 +11,7 @@ doing, know when it is unhealthy, recover from failures and change it safely.
 | [Runbooks](runbooks.md)                 | Step-by-step responses: outbox backlog, circuit open, stuck runs, DB down, Redis wiped, 429 storms, disk full |
 | [Backup and restore](backup-restore.md) | What to back up, `pg_dump`/`pg_restore` procedure and a recorded, tested drill                                |
 | [Upgrades](upgrade.md)                  | Image tags, forward-only migrations, expand/contract, rollback = roll forward                                 |
-| [Performance](performance.md)           | k6 load-test method (open workload, outcome classes); results recorded in Phase 3                             |
+| [Performance](performance.md)           | k6 load-test method (open workload, outcome classes) and measured results                                     |
 
 Related decisions: [ADR-0019](../adr/0019-observability-otel-pino-prometheus.md) (observability),
 [ADR-0080](../adr/0080-telemetry-bootstrap-and-metric-conventions.md) (telemetry bootstrap),

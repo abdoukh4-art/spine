@@ -64,13 +64,6 @@ SPINE_TOKEN=… PEAK_RATE=100 ./scripts/load-test.sh
 k6 writes its summary to `load/results/ingest-<timestamp>.json` (git-ignored; copy the
 interesting numbers here).
 
-## Results
-
-_To be recorded in Phase 3._ Template:
-
-| Date | Git SHA | Host | PEAK_RATE | Accepted p95 / p99 | Errors | 503s | Backlog trend | Bottleneck observed |
-| ---- | ------- | ---- | --------- | ------------------ | ------ | ---- | ------------- | ------------------- |
-
 ## Results (2026-10-28)
 
 **Environment:** one host, 4 vCPU Intel Xeon @ 2.80 GHz, 15 GB RAM; the whole Compose stack

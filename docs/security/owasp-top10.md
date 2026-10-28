@@ -1,7 +1,7 @@
 # OWASP Top 10 (2021) mapping
 
 How each category is addressed in Spine. "Evidence" points to code, a test or an ADR.
-Status is updated during the Phase 3 security review.
+Reviewed in the Phase 3 security review ([findings](review-2026-10-28.md)).
 
 | #   | Category                                 | Controls in Spine                                                                                                      | Evidence                                                                                                         |
 | --- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |

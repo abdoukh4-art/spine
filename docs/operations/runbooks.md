@@ -234,6 +234,6 @@ dc exec -T postgres psql -U spine -c "SELECT relname, pg_size_pretty(pg_total_re
 
 **Fix:** capacity planning: the largest tables are usually `domain_events` (one row per
 event, kept for audit) and `alerts.raw`. Add a retention job for dispatched events older
-than N days (Phase 3) and monitor the volume (node-exporter, or `df` in your host monitoring).
+than N days (not built yet; on the roadmap in [STATUS](../STATUS.md)) and monitor the volume (node-exporter, or `df` in your host monitoring).
 
 **Verify:** Postgres accepts writes (`/readyz` ready), Prometheus targets `up`.
