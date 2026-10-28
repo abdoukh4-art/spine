@@ -23,6 +23,7 @@ async function main(): Promise<void> {
     const result = await migrate(app.deps.db, config.MIGRATIONS_DIR);
     logger.info({ applied: result.applied }, 'migrations complete');
   }
+  for (const module of app.modules) await module.startup?.();
 
   let shuttingDown = false;
   const server = await buildHttpServer({

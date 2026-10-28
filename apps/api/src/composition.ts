@@ -4,7 +4,7 @@ import { createDatabase, pingDatabase, type Db } from './platform/db/database.js
 import { migrationsUpToDate } from './platform/db/migrator.js';
 import { OutboxEventPublisher } from './platform/events/outbox.js';
 import { EventSubscriptions, type EventPublisher } from './platform/events/types.js';
-import { rejectAllAuthenticator, type Authenticator } from './platform/http/access.js';
+import type { Authenticator } from './platform/http/access.js';
 import { createLogger, type Logger } from './platform/logger.js';
 import type { PlatformDeps, SpineModule } from './platform/module.js';
 import { systemClock, uuidV7Generator, type Clock, type IdGenerator } from './platform/runtime.js';
@@ -80,5 +80,5 @@ export function createApplication(
   };
   for (const m of modules) Object.assign(readinessChecks, m.readinessChecks?.() ?? {});
 
-  return { deps, modules, subscriptions, authenticator: rejectAllAuthenticator, readinessChecks };
+  return { deps, modules, subscriptions, authenticator: auth.api.authenticator, readinessChecks };
 }
