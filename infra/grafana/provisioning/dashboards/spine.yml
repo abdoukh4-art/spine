@@ -1,0 +1,14 @@
+# Loads every dashboard JSON in /etc/grafana/dashboards (mounted from infra/grafana/dashboards).
+# Edit dashboards in the repo, not in the UI: UI changes are not saved back (allowUiUpdates: false).
+apiVersion: 1
+
+providers:
+  - name: spine
+    folder: Spine
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/dashboards
+      foldersFromFilesStructure: false

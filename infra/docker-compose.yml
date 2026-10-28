@@ -1,0 +1,257 @@
+# Spine local / single-host stack (ADR-0083). Start with `make up` from the repo root,
+# which runs: docker compose -f infra/docker-compose.yml --env-file .env up -d --build
+#
+#   http://localhost:8080   console + API (nginx)        https://localhost:8443  same, TLS
+#   http://localhost:9090   Prometheus                    http://localhost:3001   Grafana
+#   http://localhost:16686  Jaeger (profile "tracing")
+#
+# Hardening applied to every service where the image allows it: read-only root
+# filesystem (+ tmpfs for scratch paths), all Linux capabilities dropped, no privilege
+# escalation, non-root user, memory limit, restart policy, healthcheck. Published ports
+# bind to SPINE_BIND_ADDRESS (127.0.0.1 by default) so the stack is not exposed to the LAN.
+name: spine
+
+x-hardening: &hardening
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ['no-new-privileges:true']
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: { max-size: '10m', max-file: '3' }
+
+x-spine-app: &spine-app
+  <<: *hardening
+  image: spine-api:${SPINE_IMAGE_TAG:-local}
+  env_file: ../.env
+  tmpfs: ['/tmp:size=64m']
+  depends_on:
+    postgres: { condition: service_healthy }
+    redis: { condition: service_healthy }
+
+services:
+  postgres:
+    <<: *hardening
+    image: ${DOCKER_REGISTRY:-docker.io}/library/postgres:16-alpine
+    user: postgres # uid 70: the entrypoint then needs no root capabilities
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-spine}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-spine}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    tmpfs:
+      - /var/run/postgresql:uid=70,gid=70,mode=0775
+      - /tmp:size=64m
+    shm_size: 128m
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    deploy:
+      resources:
+        limits: { memory: 512m }
+
+  redis:
+    <<: *hardening
+    image: ${DOCKER_REGISTRY:-docker.io}/library/redis:7-alpine
+    user: redis
+    # appendonly no: Redis only holds re-creatable state (ADR-0008). The source of truth is
+    # Postgres; the playbook reconciler re-enqueues non-terminal runs after a Redis loss, and
+    # docs/operations/runbooks.md#redis-wiped covers re-dispatching recent outbox events.
+    # An fsync'ed AOF would cost write latency to protect data we can rebuild. We keep the
+    # default RDB snapshots (cheap) so an ordinary restart loses little.
+    # noeviction: BullMQ requires it; evicting a job key would silently lose work.
+    command:
+      - redis-server
+      - --appendonly
+      - 'no'
+      - --maxmemory
+      - 200mb
+      - --maxmemory-policy
+      - noeviction
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    deploy:
+      resources:
+        limits: { memory: 256m }
+
+  api:
+    <<: *spine-app
+    build:
+      context: ..
+      dockerfile: infra/docker/api.Dockerfile
+      args:
+        NODE_IMAGE: ${DOCKER_REGISTRY:-docker.io}/library/node:22.22.0-bookworm-slim
+        SPINE_VERSION: ${SPINE_VERSION:-0.0.0-dev}
+      secrets: [build_ca]
+    command: ['dist/main.js']
+    environment:
+      SERVICE_NAME: spine-api
+      DATABASE_URL: postgres://${POSTGRES_USER:-spine}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-spine}
+      REDIS_URL: redis://redis:6379
+      HTTP_PORT: '3000'
+      METRICS_PORT: '9464'
+      TRUST_PROXY: 'true' # only nginx can reach the API port in this network
+      MIGRATIONS_DIR: /app/migrations
+      CONFIG_DIR: /app/config
+    ports:
+      - '${SPINE_BIND_ADDRESS:-127.0.0.1}:3000:3000' # direct API access for debugging
+    healthcheck:
+      test: ['CMD', '/nodejs/bin/node', '/app/healthcheck.mjs', 'http://127.0.0.1:3000/healthz']
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 512m }
+
+  worker:
+    <<: *spine-app
+    pull_policy: never # same image as `api`, which builds it
+    command: ['dist/worker.js']
+    environment:
+      SERVICE_NAME: spine-worker
+      DATABASE_URL: postgres://${POSTGRES_USER:-spine}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-spine}
+      REDIS_URL: redis://redis:6379
+      METRICS_PORT: '9464'
+      MIGRATE_ON_START: 'false'
+      CONFIG_DIR: /app/config
+    depends_on:
+      api: { condition: service_healthy } # the API applies migrations first
+    # The worker has no HTTP API; its metrics endpoint is served by the same event loop,
+    # so it doubles as a liveness probe.
+    healthcheck:
+      test: ['CMD', '/nodejs/bin/node', '/app/healthcheck.mjs', 'http://127.0.0.1:9464/metrics']
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 512m }
+
+  console:
+    <<: *hardening
+    image: spine-console:${SPINE_IMAGE_TAG:-local}
+    build:
+      context: ..
+      dockerfile: infra/docker/console.Dockerfile
+      args:
+        NODE_IMAGE: ${DOCKER_REGISTRY:-docker.io}/library/node:22.22.0-bookworm-slim
+        NGINX_IMAGE: ${DOCKER_REGISTRY:-docker.io}/nginxinc/nginx-unprivileged:1.28-alpine
+        SPINE_VERSION: ${SPINE_VERSION:-0.0.0-dev}
+      secrets: [build_ca]
+    environment:
+      SPINE_API_UPSTREAM: api:3000
+      SPINE_SERVER_NAME: ${SPINE_SERVER_NAME:-localhost}
+      SPINE_HSTS_MAX_AGE: ${SPINE_HSTS_MAX_AGE:-0}
+      SPINE_REAL_IP_FROM: ${SPINE_REAL_IP_FROM:-127.0.0.1}
+    volumes:
+      - ./tls:/etc/nginx/tls:ro
+    tmpfs:
+      - /tmp:uid=101,gid=101,size=64m
+      - /etc/nginx/conf.d:uid=101,gid=101,mode=0755 # rendered templates
+      - /var/cache/nginx:uid=101,gid=101
+    ports:
+      - '${SPINE_BIND_ADDRESS:-127.0.0.1}:8080:8080'
+      - '${SPINE_BIND_ADDRESS:-127.0.0.1}:8443:8443'
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:8080/nginx-health']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 128m }
+
+  prometheus:
+    <<: *hardening
+    image: ${DOCKER_REGISTRY:-docker.io}/prom/prometheus:v3.7.2
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - promdata:/prometheus
+    ports:
+      - '${SPINE_BIND_ADDRESS:-127.0.0.1}:9090:9090'
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:9090/-/ready']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 512m }
+
+  grafana:
+    <<: *hardening
+    image: ${DOCKER_REGISTRY:-docker.io}/grafana/grafana:12.2.1
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_AUTH_ANONYMOUS_ENABLED: 'false'
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      GF_SECURITY_DISABLE_GRAVATAR: 'true'
+      GF_SECURITY_COOKIE_SAMESITE: strict
+      GF_ANALYTICS_REPORTING_ENABLED: 'false'
+      GF_ANALYTICS_CHECK_FOR_UPDATES: 'false'
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: 'false'
+      GF_NEWS_NEWS_FEED_ENABLED: 'false'
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/spine-overview.json
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    tmpfs: ['/tmp:size=64m']
+    ports:
+      - '${SPINE_BIND_ADDRESS:-127.0.0.1}:3001:3000'
+    depends_on:
+      prometheus: { condition: service_healthy }
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:3000/api/health']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits: { memory: 256m }
+
+  # Optional trace backend: COMPOSE_PROFILES=tracing and, in .env,
+  # OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318 (api/worker then export over OTLP/HTTP).
+  jaeger:
+    <<: *hardening
+    profiles: [tracing]
+    image: ${DOCKER_REGISTRY:-docker.io}/jaegertracing/jaeger:2.11.0
+    environment:
+      JAEGER_LISTEN_HOST: 0.0.0.0 # v2 binds its receivers to localhost by default
+    tmpfs: ['/tmp:size=256m']
+    ports:
+      - '${SPINE_BIND_ADDRESS:-127.0.0.1}:16686:16686'
+    deploy:
+      resources:
+        limits: { memory: 512m }
+
+volumes:
+  pgdata:
+  redisdata:
+  promdata:
+  grafanadata:
+
+secrets:
+  # CA bundle for TLS-intercepting proxies during image builds (see api.Dockerfile).
+  build_ca:
+    file: ${BUILD_CA_FILE:-/dev/null}
