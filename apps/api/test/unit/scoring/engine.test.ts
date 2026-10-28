@@ -141,6 +141,28 @@ describe('evaluation context', () => {
     });
   });
 
+  it('falls back to the reputation data verdict and tolerates sparse geo data', () => {
+    const { verdict: _v, ...noTopLevelVerdict } = results.malicious('203.0.113.7');
+    const sparseGeo: EnrichmentResult = {
+      ...results.geo('192.0.2.10', 'US', false),
+      data: { kind: 'geo', isTor: false },
+    };
+    const context = buildEvaluationContext(testAlert(), [
+      noTopLevelVerdict,
+      sparseGeo,
+      results.geo('198.51.100.1', 'FR', false),
+      {
+        ...results.geo('198.51.100.2', 'DE', false),
+        data: { kind: 'geo', asn: 64496, isTor: false },
+      },
+    ]);
+    expect(context.enrichment).toMatchObject({
+      verdicts: ['malicious'],
+      maliciousIndicators: ['203.0.113.7'],
+      geo: { countries: ['FR'], asns: [64496, 64500], isTor: false, torIps: [] },
+    });
+  });
+
   it('is empty-but-well-formed without enrichment', () => {
     expect(buildEvaluationContext(testAlert(), []).enrichment).toMatchObject({
       verdicts: [],

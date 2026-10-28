@@ -73,8 +73,9 @@ export const ENRICHMENT_SUMMARY_KEYS: readonly (keyof EnrichmentSummary)[] = [
   'failedProviders',
 ];
 
+/** De-duplicates, then sorts (numbers numerically, strings by code unit). */
 const sortedUnique = <T extends string | number>(values: Iterable<T>): T[] =>
-  [...new Set(values)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  [...new Set(values)].sort((a, b) => (a < b ? -1 : 1)); // never equal after the Set
 
 /** Builds the evaluation context. Pure and deterministic: same input, same context. */
 export function buildEvaluationContext(
