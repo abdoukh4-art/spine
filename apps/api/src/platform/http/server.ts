@@ -170,6 +170,9 @@ async function registerSecurity(app: FastifyInstance, options: HttpServerOptions
     max: config.RATE_LIMIT_MAX_PER_MINUTE,
     timeWindow: '1 minute',
     ...(options.redis ? { redis: options.redis, nameSpace: 'spine-rl:' } : {}),
+    // Fail OPEN if the limiter's store (Redis) errors: rate limiting protects availability,
+    // so letting a Redis problem turn every request into a 500 defeats its purpose (ADR-0090).
+    skipOnError: true,
     // Health probes must never be rate limited (orchestrators poll them).
     allowList: (req) => req.url === '/healthz' || req.url === '/readyz',
     errorResponseBuilder: (_req, context) => ({

@@ -57,6 +57,8 @@ const ConfigSchema = z.object({
   BOOTSTRAP_ADMIN_EMAIL: z.email().max(254).optional(),
   BOOTSTRAP_ADMIN_PASSWORD: z.string().min(12).max(128).optional(),
 
+  /** Per-source (webhooks) / per-client-IP (analyst endpoints) ingestion limit (ADR-0024). */
+  INGEST_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).default(6000),
   INGEST_MAX_BACKLOG: z.coerce.number().int().min(1).default(10_000),
   WEBHOOK_SOURCES_JSON: z
     .string()

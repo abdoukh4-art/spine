@@ -38,8 +38,10 @@ export function deliveryJobId(delivery: EventDelivery): string {
 const DELIVERY_JOB_OPTIONS = {
   attempts: 8,
   backoff: { type: 'exponential', delay: 500 },
-  // Keep completed job IDs for a day so re-dispatches of the same delivery are deduplicated.
-  removeOnComplete: { age: 24 * 3600, count: 100_000 },
+  // Completed job IDs only need to outlive a relay crash between enqueue and commit
+  // (seconds), so an hour and 10k jobs is plenty. Keeping 24 h / 100k (the first version)
+  // filled Redis under load: every job carries the full alert snapshot (ADR-0090).
+  removeOnComplete: { age: 3600, count: 10_000 },
   removeOnFail: { age: 7 * 24 * 3600 },
 } as const;
 
