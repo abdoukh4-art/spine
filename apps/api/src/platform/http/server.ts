@@ -51,8 +51,6 @@ export async function buildHttpServer(options: HttpServerOptions): Promise<Fasti
         ? inbound
         : randomUUID();
     },
-    requestIdLogLabel: 'requestId',
-    disableRequestLogging: false,
     return503OnClosing: true,
   }).withTypeProvider<ZodTypeProvider>();
 

@@ -47,3 +47,31 @@ founding architecture decisions and a contract that parallel workstreams can bui
   than a migration.
 - An ADR that lists only the chosen option is propaganda. The rejected options are the lesson.
 - Write down your environment surprises. They become your CI's edge cases.
+
+## Postscript: the first CI run, and a policy bug
+
+The first push ran CI on GitHub. 12 of 14 checks passed. Two failed, and both taught me something.
+
+**1. `deps-audit`: 43 advisories (2 critical, 18 high).**
+
+- _Observation:_ every vulnerable package was one I had pinned _on purpose_ to a version
+  I knew well (Fastify 5.6, React Router 7.9, Vitest 3.2…).
+- _Hypothesis:_ the version policy (ADR-0022) optimized the wrong thing. It avoided
+  new-major risk but ignored known-vulnerability risk in old patch levels.
+- _Experiment:_ upgrade each package to the newest release **in the same major** that's
+  past the patched version. Vitest needed a major bump (3 → 4), because the Tinypool RCE fix only exists there.
+- _Result:_ `pnpm audit` reports 0 vulnerabilities, and all 95 unit + 8 integration
+  tests still pass. The upgrade surfaced two Fastify deprecations, which I fixed. I recorded
+  the corrected rule in [ADR-0028](../adr/0028-security-patches-override-version-maturity.md)
+  instead of editing ADR-0022 (accepted ADRs are immutable; you supersede or amend them).
+- _Lesson:_ "use mature versions" means "use a mature **major** line, at its latest **patch**."
+  Patch releases are where security fixes live.
+
+**2. `CodeQL`: one high alert, "exponential backtracking".**
+
+- It pointed at a _test_ that deliberately feeds `(a+)+$` to the ReDoS guard to prove it's
+  rejected. A true positive for the pattern, a false positive for the risk.
+- Fix: scope CodeQL to production code (`.github/codeql/codeql-config.yml`). The guard itself
+  is in `src/` and is still scanned.
+- _Lesson:_ security scanners are evidence, not verdicts. Read each finding, and when you
+  suppress one, write down why it's safe.

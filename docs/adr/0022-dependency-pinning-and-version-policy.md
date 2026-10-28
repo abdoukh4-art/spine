@@ -1,6 +1,6 @@
 # ADR-0022: Pin exact dependency versions; prefer mature releases over newest majors
 
-- **Status:** accepted
+- **Status:** accepted, amended by [ADR-0028](0028-security-patches-override-version-maturity.md)
 - **Date:** 2026-10-28
 - **Deciders:** maintainers
 - **Tags:** security, process
