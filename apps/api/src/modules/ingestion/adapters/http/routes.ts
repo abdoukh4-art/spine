@@ -38,6 +38,8 @@ export interface IngestionRouteDeps {
   metrics: IngestionMetrics;
   clock: Clock;
   webhookSources: Readonly<Record<string, WebhookSource>>;
+  /** Per-source (or per-IP) ingestion limit; defaults to {@link INGEST_RATE_LIMIT_PER_MINUTE}. */
+  rateLimitPerMinute?: number;
 }
 
 /** 10 MiB: the batch import limit (ADR-0024). */
@@ -51,19 +53,25 @@ const IDEMPOTENCY_HEADER = 'idempotency-key';
  * when the limiter runs, in `onRequest`).
  */
 export const INGEST_RATE_LIMIT_PER_MINUTE = 6000;
-const ingestRateLimit = {
-  max: INGEST_RATE_LIMIT_PER_MINUTE,
-  timeWindow: '1 minute',
-  keyGenerator: (req: FastifyRequest) => `ingest:ip:${req.ip}`,
-};
-const webhookRateLimit = {
-  max: INGEST_RATE_LIMIT_PER_MINUTE,
-  timeWindow: '1 minute',
-  keyGenerator: (req: FastifyRequest) => {
-    const params = req.params as { sourceId?: unknown } | undefined;
-    return `ingest:webhook:${typeof params?.sourceId === 'string' ? params.sourceId : 'unknown'}`;
-  },
-};
+
+/** Route-level rate-limit configs for the two ingestion key spaces. */
+function ingestRateLimits(maxPerMinute: number) {
+  return {
+    analyst: {
+      max: maxPerMinute,
+      timeWindow: '1 minute',
+      keyGenerator: (req: FastifyRequest) => `ingest:ip:${req.ip}`,
+    },
+    webhook: {
+      max: maxPerMinute,
+      timeWindow: '1 minute',
+      keyGenerator: (req: FastifyRequest) => {
+        const params = req.params as { sourceId?: unknown } | undefined;
+        return `ingest:webhook:${typeof params?.sourceId === 'string' ? params.sourceId : 'unknown'}`;
+      },
+    },
+  };
+}
 
 /** Reads and validates the optional `Idempotency-Key` header. */
 function idempotencyKey(request: FastifyRequest): string | undefined {
@@ -100,6 +108,7 @@ export async function registerIngestionRoutes(
   api: FastifyInstance,
   deps: IngestionRouteDeps,
 ): Promise<void> {
+  const limits = ingestRateLimits(deps.rateLimitPerMinute ?? INGEST_RATE_LIMIT_PER_MINUTE);
   const shed = async (): Promise<void> => {
     try {
       await deps.guard.check();
@@ -114,7 +123,7 @@ export async function registerIngestionRoutes(
     '/alerts',
     {
       onRequest: shed,
-      config: { access: { role: 'analyst' }, rateLimit: ingestRateLimit },
+      config: { access: { role: 'analyst' }, rateLimit: limits.analyst },
       schema: {
         tags: ['ingestion'],
         summary: 'Submit one canonical alert (optional Idempotency-Key header)',
@@ -141,7 +150,7 @@ export async function registerIngestionRoutes(
     {
       onRequest: shed,
       bodyLimit: BATCH_BODY_LIMIT,
-      config: { access: { role: 'analyst' }, rateLimit: ingestRateLimit },
+      config: { access: { role: 'analyst' }, rateLimit: limits.analyst },
       schema: {
         tags: ['ingestion'],
         summary: 'Bulk import: one record per line (ndjson, cef or suricata-eve); partial success',
@@ -192,7 +201,11 @@ function registerWebhookRoute(
     '/ingest/webhooks/:sourceId',
     {
       onRequest: shed,
-      config: { access: 'webhook', rateLimit: webhookRateLimit },
+      config: {
+        access: 'webhook',
+        rateLimit: ingestRateLimits(deps.rateLimitPerMinute ?? INGEST_RATE_LIMIT_PER_MINUTE)
+          .webhook,
+      },
       schema: {
         tags: ['ingestion'],
         summary:
@@ -208,7 +221,10 @@ function registerWebhookRoute(
       // Same problem body as an unmatched route: the response doesn't list or hint at sources.
       if (!source) throw new NotFoundError('Webhook source', sourceId);
       authenticateWebhook(req, req.body, source, deps, sourceId);
-      const key = idempotencyKey(req);
+      // Replay defence (security review F3): without an explicit Idempotency-Key, the verified
+      // signature is the key. It binds timestamp + body, so an exact replay within the ±5 min
+      // window gets the stored response and changes nothing (no duplicate count, no score bump).
+      const key = idempotencyKey(req) ?? signatureIdempotencyKey(req);
       const metricSource = `webhook:${sourceId}`;
       const normalized = NORMALIZERS[source.normalizer](req.body, {
         receivedAt: deps.clock.now().toISOString(),
@@ -241,6 +257,12 @@ function registerWebhookRoute(
 function header(req: FastifyRequest, name: string): string | undefined {
   const value = req.headers[name];
   return typeof value === 'string' ? value : undefined;
+}
+
+/** `sig-<hex>` from a (by now verified) `X-Spine-Signature` header. */
+function signatureIdempotencyKey(req: FastifyRequest): string | undefined {
+  const m = /^sha256=([0-9a-fA-F]{64})$/.exec(header(req, 'x-spine-signature')?.trim() ?? '');
+  return m?.[1] ? `sig-${m[1].toLowerCase()}` : undefined;
 }
 
 function authenticateWebhook(

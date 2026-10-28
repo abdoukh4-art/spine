@@ -1,3 +1,4 @@
+import type { AlertTimesRow } from '../public-api.js';
 import type {
   Alert,
   AlertListQuery,
@@ -72,6 +73,8 @@ export interface AlertRepository {
     alertId: string,
     score: { score: number; severity: Severity; computedAt: string },
   ): Promise<boolean>;
+  /** Lifecycle timestamps of alerts received in [from, to) (reporting, ADR-0026). */
+  timesReceivedBetween(from: Date, to: Date): Promise<AlertTimesRow[]>;
   /** Ids of the given alerts that exist. */
   existingIds(trx: DbExecutor, alertIds: readonly string[]): Promise<string[]>;
   /** Sets `case_id` for the given alerts (null unlinks; `onlyCaseId` restricts unlinking to one case). */

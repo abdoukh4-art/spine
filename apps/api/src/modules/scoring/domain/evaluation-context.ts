@@ -40,6 +40,12 @@ export interface EnrichmentSummary {
   reputationTags: string[];
   /** The most critical asset found for the host or its IPs, or null when none was found. */
   asset: AssetSummary | null;
+  /**
+   * Union of the tags of EVERY asset found (source and destination alike). `asset` keeps only
+   * the most critical one, so a scan *from* an authorized scanner *to* a critical server
+   * would otherwise lose the scanner's `authorized-scanner` tag.
+   */
+  assetTags: string[];
   geo: {
     /** ISO 3166-1 alpha-2 country codes of the alert's public IPs. */
     countries: string[];
@@ -69,6 +75,7 @@ export const ENRICHMENT_SUMMARY_KEYS: readonly (keyof EnrichmentSummary)[] = [
   'suspiciousIndicators',
   'reputationTags',
   'asset',
+  'assetTags',
   'geo',
   'failedProviders',
 ];
@@ -104,6 +111,7 @@ export function buildEvaluationContext(
       suspiciousIndicators: sortedUnique(withVerdict('suspicious').map((r) => r.indicator.value)),
       reputationTags: sortedUnique(reputation.flatMap((d) => d.tags)),
       asset: mostCriticalAsset(ok),
+      assetTags: sortedUnique(ok.flatMap((r) => (r.data?.kind === 'asset' ? r.data.tags : []))),
       geo: {
         countries: sortedUnique(geo.flatMap((g) => (g.country ? [g.country] : []))),
         asns: sortedUnique(geo.flatMap((g) => (g.asn === undefined ? [] : [g.asn]))),

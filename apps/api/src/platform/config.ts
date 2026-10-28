@@ -57,6 +57,8 @@ const ConfigSchema = z.object({
   BOOTSTRAP_ADMIN_EMAIL: z.email().max(254).optional(),
   BOOTSTRAP_ADMIN_PASSWORD: z.string().min(12).max(128).optional(),
 
+  /** Per-source (webhooks) / per-client-IP (analyst endpoints) ingestion limit (ADR-0024). */
+  INGEST_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).default(6000),
   INGEST_MAX_BACKLOG: z.coerce.number().int().min(1).default(10_000),
   WEBHOOK_SOURCES_JSON: z
     .string()
@@ -72,7 +74,7 @@ const ConfigSchema = z.object({
       }
     }),
 
-  OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(10).default(200),
+  OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(10).default(50),
   OUTBOX_BATCH_SIZE: z.coerce.number().int().min(1).max(1000).default(100),
   EVENT_WORKER_CONCURRENCY: z.coerce.number().int().min(1).default(8),
   PLAYBOOK_WORKER_CONCURRENCY: z.coerce.number().int().min(1).default(4),
@@ -137,6 +139,22 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     throw new ConfigError([
       'BOOTSTRAP_ADMIN_PASSWORD looks like a placeholder; set a strong password in production',
     ]);
+  }
+  if (config.NODE_ENV === 'production') {
+    // Security review F1: the .env.example values are public; refuse them in production.
+    const placeholderSources = Object.entries(config.WEBHOOK_SOURCES_JSON)
+      .filter(([, source]) => /change-me|example|insecure|dev-only/i.test(source.secret))
+      .map(([id]) => id);
+    if (placeholderSources.length > 0) {
+      throw new ConfigError([
+        `WEBHOOK_SOURCES_JSON: placeholder secret for source(s) ${placeholderSources.join(', ')}; generate random secrets in production`,
+      ]);
+    }
+    if (!config.COOKIE_SECURE) {
+      throw new ConfigError([
+        'COOKIE_SECURE must be true in production (refresh cookies need HTTPS)',
+      ]);
+    }
   }
   return config;
 }

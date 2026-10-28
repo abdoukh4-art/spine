@@ -1,7 +1,7 @@
 # Performance
 
-> **Status:** method and tooling ready (Phase 1); measured results are recorded in
-> Phase 3, once the ingestion, enrichment, scoring and playbook modules are integrated.
+> **Status:** measured on 2026-10-28 against the integrated stack (results below). The
+> 30-minute soak and the "find the knee" sweep above 200/s have **not** been run yet.
 
 ## Questions the load test answers
 
@@ -64,9 +64,43 @@ SPINE_TOKEN=… PEAK_RATE=100 ./scripts/load-test.sh
 k6 writes its summary to `load/results/ingest-<timestamp>.json` (git-ignored; copy the
 interesting numbers here).
 
-## Results
+## Results (2026-10-28)
 
-_To be recorded in Phase 3._ Template:
+**Environment:** one host, 4 vCPU Intel Xeon @ 2.80 GHz, 15 GB RAM; the whole Compose stack
+(nginx, API, worker, Postgres 16, Redis 7 with `maxmemory 200mb`, Prometheus, Grafana) plus
+k6 on the same machine. That means k6, API, worker and Postgres compete for the same 4 cores, so treat
+the numbers as a lower bound. Mock enrichment latency `ENRICHMENT_LATENCY_MS=30`,
+`EVENT_WORKER_CONCURRENCY=8`, `LOG_LEVEL=info`. Ingest-to-scored latency is measured in SQL as
+`alert_scores.computed_at − alerts.received_at`.
 
-| Date | Git SHA | Host | PEAK_RATE | Accepted p95 / p99 | Errors | 503s | Backlog trend | Bottleneck observed |
-| ---- | ------- | ---- | --------- | ------------------ | ------ | ---- | ------------- | ------------------- |
+| Run | Load                 | Code / settings                                                  | Accepted p95 / p99 | Errors                  | 429  | 503 (shed)  | Ingest → scored                             |
+| --- | -------------------- | ---------------------------------------------------------------- | ------------------ | ----------------------- | ---- | ----------- | ------------------------------------------- |
+| 1   | 200/s, 2 min plateau | first integrated build                                           | 177 / 245 ms       | **1 904 × 500 (6.3 %)** | 34 % | 47          | not measured                                |
+| 2   | 200/s, 2 min plateau | ADR-0090 retention + fail-open, ingest limit raised for the test | **167 / 269 ms**   | **0**                   | 0    | 122 (0.4 %) | p95 **129 s** (pipeline lags; see below)    |
+| 3   | 20/s, 2 min          | poll interval 200 ms                                             | 17 / 23 ms         | 0                       | 0    | 0           | p50 355 ms · **p95 1 011 ms** · p99 8.7 s   |
+| 4   | 20/s, 2 min          | **poll interval 50 ms** (new default)                            | 15 / 22 ms         | 0                       | 0    | 0           | p50 **98 ms** · **p95 125 ms** · p99 269 ms |
+
+### What we learned
+
+1. **Run 1 → 2: Redis OOM turned into 500s.** Completed BullMQ jobs (each with a full alert
+   snapshot) were kept 24 h / 100 k, and the rate limiter failed closed when Redis errored.
+   Both are fixed (ADR-0090). Redis peaked at 130 MB during run 2. The 429s in run 1 were the
+   ingestion limit (6 000/min per client IP) doing its job, since all k6 traffic comes from one
+   IP; it's now configurable (`INGEST_RATE_LIMIT_PER_MINUTE`).
+2. **Ingestion capacity ≥ 200 alerts/s** through nginx with p95 167 ms (target < 500 ms), and
+   back-pressure works: when the outbox backlog crossed `INGEST_MAX_BACKLOG`, 0.4 % of
+   requests got `503 + Retry-After` instead of timing out (vision S3: met).
+3. **The async pipeline is the bottleneck under sustained load.** During run 2 it processed
+   ≈ 45 alerts/s; after the load stopped it drained at ≈ 250 alerts/s (29 k alerts cleared in
+   ≈ 5 min). The difference is CPU contention on a single 4-core host, not a design limit. Scale
+   the worker onto its own host, then raise `EVENT_WORKER_CONCURRENCY`.
+4. **Latency at realistic load** (20 alerts/s, already more than many SOCs see): two outbox
+   hops × up to 200 ms of polling gave p95 1 s. At 50 ms polling, p95 is **125 ms**, which meets
+   vision S2 (< 500 ms) and SLO 2 (< 2 s).
+
+### Not yet measured (honest gaps)
+
+- The knee above 200/s (400/s and up), and the 30-minute soak (memory leaks, DB pool).
+- Playbook throughput under load (approval-gated runs are human-paced; automatic runs weren't
+  isolated in these tests).
+- Any of the above on separate hosts for the API, worker and Postgres.

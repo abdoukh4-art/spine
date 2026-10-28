@@ -7,6 +7,7 @@ import { decodeCursor, paginate, type Cursor } from '../../../../platform/http/p
 import { OpenAlertExistsError } from '../../application/errors.js';
 import type { AlertPatch, AlertRepository, LockedAlert } from '../../application/ports.js';
 import { likePattern, tacticFilterIds, techniqueFilterIds } from '../../domain/mitre-index.js';
+import { alertTimesReceivedBetween } from './reporting-queries.js';
 import {
   canonicalPart,
   iso,
@@ -267,6 +268,10 @@ export class PostgresAlertRepository implements AlertRepository {
       )
       .executeTakeFirst();
     return result.numUpdatedRows > 0n;
+  }
+
+  timesReceivedBetween(from: Date, to: Date) {
+    return alertTimesReceivedBetween(this.db, from, to);
   }
 
   async existingIds(trx: DbExecutor, alertIds: readonly string[]): Promise<string[]> {

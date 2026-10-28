@@ -102,6 +102,7 @@ function racyServer(parties: number) {
   const racy: AlertsPublicApi = {
     get: (id) => real.get(id),
     setStatus: (id, to, actor) => real.setStatus(id, to, actor),
+    timesReceivedBetween: (from, to) => real.timesReceivedBetween(from, to),
     recordDuplicate: (trx, id, at) => real.recordDuplicate(trx, id, at),
     findOpenByFingerprint: async (trx, fp) => {
       const found = await real.findOpenByFingerprint(trx, fp);
@@ -405,6 +406,27 @@ describe('POST /ingest/webhooks/:sourceId', () => {
     const res = await signed('suricata', SURICATA_SECRET, suricataEveLines()[1]!);
     expect(res.statusCode).toBe(400);
     expect(res.json().detail).toContain('not an alert');
+  });
+
+  it('treats an exact replay of a signed webhook as a no-op (security review F3)', async () => {
+    // A unique event (its own flow_id), so this test doesn't consume a fixture other tests expect.
+    const line = suricataEveLines()[0]!.replace(/"flow_id":\s*\d+/, '"flow_id": 777000111222');
+    expect(line).toContain('777000111222');
+    clock.advance(60_000);
+    const first = await signed('suricata', SURICATA_SECRET, line);
+    expect(first.statusCode).toBe(202);
+    const { alertId } = first.json();
+    const before = await alertRow(alertId);
+    // An attacker re-sends the captured request (same timestamp, body and signature).
+    const replay = await signed('suricata', SURICATA_SECRET, line);
+    expect(replay.statusCode).toBe(202);
+    expect(replay.headers['idempotent-replay']).toBe('true');
+    expect((await alertRow(alertId)).duplicate_count).toBe(before.duplicate_count);
+    // A genuine re-send by the sensor (new timestamp, so a new signature) still counts.
+    clock.advance(1_000);
+    const resend = await signed('suricata', SURICATA_SECRET, line);
+    expect(resend.headers['idempotent-replay']).toBeUndefined();
+    expect((await alertRow(alertId)).duplicate_count).toBe(before.duplicate_count + 1);
   });
 
   it('supports Idempotency-Key scoped to the webhook source', async () => {

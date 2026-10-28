@@ -65,7 +65,8 @@ Key mechanics:
 ## Public API
 
 `public-api.ts`: `PlaybooksPublicApi.runsForAlert(alertId)` → run summaries, newest first
-(used by the alert detail view).
+(used by the alert detail view), and `runTimesBetween(from, to)` → timing fields of runs that
+finished in the window plus all in-flight runs (the Metrics read model, ADR-0026/0029).
 
 HTTP (all under `/api/v1`, see [api-contract.md](../architecture/api-contract.md)):
 

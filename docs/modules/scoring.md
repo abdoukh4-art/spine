@@ -126,25 +126,26 @@ path into this object:
 **`enrichment.*`**: built by `buildEvaluationContext` from the successful (`ok`) results.
 Lists are de-duplicated and sorted.
 
-| Path                                 | Type                          | Meaning                                                            |
-| ------------------------------------ | ----------------------------- | ------------------------------------------------------------------ |
-| `enrichment.verdicts`                | verdict[]                     | distinct verdicts, most severe first: `["malicious","suspicious"]` |
-| `enrichment.maxReputationScore`      | number \| null                | highest reputation score (0–100); null if no reputation data       |
-| `enrichment.maliciousIndicators`     | string[]                      | values judged malicious: `["203.0.113.66","evil.example"]`         |
-| `enrichment.maliciousIndicatorTypes` | indicator type[]              | their types: `["domain","ipv4"]`                                   |
-| `enrichment.suspiciousIndicators`    | string[]                      | values judged suspicious                                           |
-| `enrichment.reputationTags`          | string[]                      | union of reputation tags: `["c2","cobalt-strike"]`                 |
-| `enrichment.asset`                   | object \| null                | the **most critical** asset found for the host or its IPs          |
-| `enrichment.asset.hostname`          | string                        | `dc01.corp.example`                                                |
-| `enrichment.asset.criticality`       | `low\|medium\|high\|critical` |                                                                    |
-| `enrichment.asset.owner`             | string \| null                | `identity-team@corp.example`                                       |
-| `enrichment.asset.businessUnit`      | string \| null                | `IT Infrastructure`                                                |
-| `enrichment.asset.tags`              | string[]                      | `["domain-controller","tier0"]`                                    |
-| `enrichment.geo.countries`           | string[]                      | ISO country codes of the public IPs: `["DE","NL"]`                 |
-| `enrichment.geo.asns`                | number[]                      | autonomous system numbers                                          |
-| `enrichment.geo.isTor`               | boolean                       | any IP is a Tor exit node                                          |
-| `enrichment.geo.torIps`              | string[]                      | which ones                                                         |
-| `enrichment.failedProviders`         | string[]                      | providers with a failed lookup (also in `dataGaps`)                |
+| Path                                 | Type                          | Meaning                                                                        |
+| ------------------------------------ | ----------------------------- | ------------------------------------------------------------------------------ |
+| `enrichment.verdicts`                | verdict[]                     | distinct verdicts, most severe first: `["malicious","suspicious"]`             |
+| `enrichment.maxReputationScore`      | number \| null                | highest reputation score (0–100); null if no reputation data                   |
+| `enrichment.maliciousIndicators`     | string[]                      | values judged malicious: `["203.0.113.66","evil.example"]`                     |
+| `enrichment.maliciousIndicatorTypes` | indicator type[]              | their types: `["domain","ipv4"]`                                               |
+| `enrichment.suspiciousIndicators`    | string[]                      | values judged suspicious                                                       |
+| `enrichment.reputationTags`          | string[]                      | union of reputation tags: `["c2","cobalt-strike"]`                             |
+| `enrichment.asset`                   | object \| null                | the **most critical** asset found for the host or its IPs                      |
+| `enrichment.asset.hostname`          | string                        | `dc01.corp.example`                                                            |
+| `enrichment.asset.criticality`       | `low\|medium\|high\|critical` |                                                                                |
+| `enrichment.asset.owner`             | string \| null                | `identity-team@corp.example`                                                   |
+| `enrichment.asset.businessUnit`      | string \| null                | `IT Infrastructure`                                                            |
+| `enrichment.asset.tags`              | string[]                      | `["domain-controller","tier0"]`                                                |
+| `enrichment.assetTags`               | string[]                      | union of the tags of **every** asset found (e.g. the scanner _and_ its target) |
+| `enrichment.geo.countries`           | string[]                      | ISO country codes of the public IPs: `["DE","NL"]`                             |
+| `enrichment.geo.asns`                | number[]                      | autonomous system numbers                                                      |
+| `enrichment.geo.isTor`               | boolean                       | any IP is a Tor exit node                                                      |
+| `enrichment.geo.torIps`              | string[]                      | which ones                                                                     |
+| `enrichment.failedProviders`         | string[]                      | providers with a failed lookup (also in `dataGaps`)                            |
 
 **Semantics to remember** (from the interpreter, `condition-eval.ts`):
 

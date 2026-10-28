@@ -42,6 +42,7 @@ in the same PR. CI checks that every ADR file appears in this index.
 | [0026](0026-mttd-mttr-definitions.md)                             | Precise definitions of MTTD, MTTR and playbook success rate                                  | accepted | data                   |
 | [0027](0027-workspace-packages-as-source-and-esbuild-bundling.md) | Consume workspace packages as TS source; bundle the API with esbuild                         | accepted | architecture, process  |
 | [0028](0028-security-patches-override-version-maturity.md)        | Security patches override the "mature version" rule (amends 0022)                            | accepted | security, process      |
+| [0029](0029-metrics-read-side-module-and-cached-gauges.md)        | Metrics is a read-side module; SOC gauges refreshed off the scrape path                      | accepted | architecture, ops      |
 | [0030](0030-pure-normalizers-and-preparation-pipeline.md)         | Pure normalizers returning a typed Result; no `generic` normalizer                           | accepted | architecture, data     |
 | [0031](0031-source-mapping-rules-suricata-and-cef.md)             | Mapping rules for Suricata EVE and CEF sources                                               | accepted | data                   |
 | [0032](0032-indicator-normalization.md)                           | Indicator extraction and normalization rules                                                 | accepted | data                   |
@@ -83,3 +84,4 @@ in the same PR. CI checks that every ADR file appears in this index.
 | [0083](0083-single-host-deployment-compose-and-systemd.md)        | Single-host deployment: hardened Docker Compose, systemd units as the alternative            | accepted | ops, security          |
 | [0084](0084-slos-and-burn-rate-alerting.md)                       | SLOs with multi-window, multi-burn-rate alerting                                             | accepted | ops                    |
 | [0085](0085-image-scanning-and-sbom-in-ci.md)                     | Scan container images with Trivy and publish image SBOMs in CI                               | accepted | security, process      |
+| [0090](0090-load-test-fixes-retention-fail-open-poll-interval.md) | Bounded job retention, fail-open rate limiting, 50 ms outbox poll (from the first load test) | accepted | ops, architecture      |

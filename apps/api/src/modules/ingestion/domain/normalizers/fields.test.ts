@@ -36,6 +36,10 @@ describe('classifyCategory', () => {
   it.each([
     [['ET PHISHING Office 365 credential page'], 'phishing'],
     [['Kerberoasting detected'], 'credential_access'],
+    // Found by the demo: classic VPN/IdP phrasings that used to fall through to 'other'.
+    [['Repeated authentication failures'], 'credential_access'],
+    [['Successful login after failures'], 'credential_access'],
+    [['Windows logon failure burst'], 'credential_access'],
     [['PsExec service installed on remote host'], 'lateral_movement'],
     [['Large upload to cloud storage'], 'exfiltration'],
     [['Ransomware note dropped'], 'malware'],

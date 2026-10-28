@@ -22,6 +22,7 @@ export default tseslint.config(
       '.dependency-cruiser.cjs',
       'scripts/**',
       'apps/*/build.mjs',
+      'e2e/*.mjs',
       'load/**',
     ],
   },

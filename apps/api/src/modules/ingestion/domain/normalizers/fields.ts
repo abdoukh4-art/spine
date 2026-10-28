@@ -88,7 +88,7 @@ const CATEGORY_RULES: readonly (readonly [RegExp, AlertCategory])[] = [
   [/phish/i, 'phishing'],
   [/\b(c2|cnc|c&c|command[ _-]?and[ _-]?control|beacon)/i, 'command_and_control'],
   [
-    /(credential|password|brute[ _-]?force|kerberoast|lsass|mimikatz|login fail|failed login)/i,
+    /(credential|password|brute[ _-]?force|kerberoast|lsass|mimikatz|login fail|failed login|authentication fail|failed authentication|logon fail|after (repeated )?failures)/i,
     'credential_access',
   ],
   [/(lateral|psexec|smb exec|wmi exec|remote service|pass[ _-]the[ _-]hash)/i, 'lateral_movement'],

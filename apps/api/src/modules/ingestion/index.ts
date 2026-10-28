@@ -57,6 +57,7 @@ export function createIngestionModule(
           metrics,
           clock: deps.clock,
           webhookSources: deps.config.WEBHOOK_SOURCES_JSON,
+          rateLimitPerMinute: deps.config.INGEST_RATE_LIMIT_PER_MINUTE,
         }),
       backgroundTasks: () => [cleanup],
       readinessChecks: () => ({ 'ingest-backlog': () => guard.healthy() }),

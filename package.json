@@ -21,7 +21,7 @@
     "test": "pnpm -r test",
     "test:coverage": "pnpm -r test:coverage",
     "test:integration": "pnpm -r test:integration",
-    "test:e2e": "pnpm --filter @spine/e2e test",
+    "test:e2e": "pnpm --filter @spine/e2e test:e2e",
     "docs:check": "node scripts/check-docs.mjs",
     "openapi:generate": "pnpm --filter @spine/api openapi:generate",
     "prepare": "husky || true"

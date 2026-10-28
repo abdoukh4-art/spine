@@ -183,7 +183,7 @@ from `config.ts` on 2026-10-28 (re-check it when you add a variable).
 | `BOOTSTRAP_ADMIN_PASSWORD`            | unset                   | ≥ 12 characters; production refuses placeholders                                       |
 | `INGEST_MAX_BACKLOG`                  | `10000`                 | Outbox backlog above which ingestion answers 503 (back-pressure)                       |
 | `WEBHOOK_SOURCES_JSON`                | `{}`                    | `{"<id>": {"normalizer": "…", "secret": "≥32 chars"}}`                                 |
-| `OUTBOX_POLL_INTERVAL_MS`             | `200`                   | Relay poll interval when idle                                                          |
+| `OUTBOX_POLL_INTERVAL_MS`             | `50`                    | Relay poll interval when idle                                                          |
 | `OUTBOX_BATCH_SIZE`                   | `100`                   | Events per relay transaction                                                           |
 | `EVENT_WORKER_CONCURRENCY`            | `8`                     | Parallel event deliveries per worker                                                   |
 | `PLAYBOOK_WORKER_CONCURRENCY`         | `4`                     | Parallel playbook steps per worker                                                     |
@@ -203,7 +203,11 @@ Compose-only variables (read by `infra/docker-compose.yml`, not by the app):
 
 ## Production checklist
 
-- [ ] `NODE_ENV=production`, a random `AUTH_JWT_SECRET`, `COOKIE_SECURE=true`.
+- [ ] `NODE_ENV=production`, a random `AUTH_JWT_SECRET`, `COOKIE_SECURE=true`. The API **refuses to
+      start** with the `.env.example` placeholders for the JWT secret, the bootstrap password or any
+      webhook secret, or with `COOKIE_SECURE=false` (security review F1).
+- [ ] New random webhook secrets per source (`openssl rand -hex 32`), shared only with that sensor.
+- [ ] Don't run the demo seeder (`dist/cli/seed.js`): it refuses in production unless forced.
 - [ ] Real `POSTGRES_PASSWORD` and `GRAFANA_ADMIN_PASSWORD`; `.env` mode `0600`.
 - [ ] A CA-signed certificate in `infra/tls/`, `SPINE_HSTS_MAX_AGE=63072000`, HTTP → HTTPS redirect.
 - [ ] `CORS_ALLOWED_ORIGINS` = your console origin only.
