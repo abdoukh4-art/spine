@@ -2,7 +2,7 @@
   "name": "spine",
   "version": "0.0.0",
   "private": true,
-  "description": "Spine \u2014 an open-source, teaching-grade SOAR platform",
+  "description": "Spine — an open-source, teaching-grade SOAR platform",
   "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@10.28.0",
