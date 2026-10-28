@@ -61,7 +61,11 @@ export function createApplication(
   const auth = createAuthModule(deps);
   const alerts = createAlertsModule(deps);
   const ingestion = createIngestionModule(deps);
-  const enrichment = createEnrichmentModule(deps);
+  // INTEGRATION: replace with the alerts public API in Phase 2 (`alertLookup: alerts.api`,
+  // AlertsPublicApi.get has the same shape). Until then POST /alerts/:id/enrich answers 404.
+  const enrichment = createEnrichmentModule(deps, {
+    alertLookup: { get: () => Promise.resolve(null) },
+  });
   const scoring = createScoringModule(deps);
   const playbooks = createPlaybooksModule(deps);
   const metrics = createMetricsModule(deps);

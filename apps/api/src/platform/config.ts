@@ -77,6 +77,17 @@ const ConfigSchema = z.object({
   SIMULATION_LATENCY_MS: z.coerce.number().int().min(0).default(50),
   SIMULATION_FAILURE_RATE: z.coerce.number().min(0).max(1).default(0),
 
+  // Enrichment (ADR-0014, ADR-0044, ADR-0045): mock provider behaviour + resilience budget.
+  ENRICHMENT_LATENCY_MS: z.coerce.number().int().min(0).max(60_000).default(30),
+  ENRICHMENT_FAILURE_RATE: z.coerce.number().min(0).max(1).default(0),
+  ENRICHMENT_SEED: z.coerce.number().int().default(42),
+  ENRICHMENT_TIMEOUT_MS: z.coerce.number().int().min(1).max(60_000).default(1000),
+  ENRICHMENT_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(10).default(3),
+  ENRICHMENT_CONCURRENCY: z.coerce.number().int().min(1).max(64).default(8),
+
+  // Scoring (ADR-0015, ADR-0046): ruleset file, relative to CONFIG_DIR.
+  SCORING_RULESET_FILE: z.string().min(1).default('scoring/ruleset.v1.yaml'),
+
   SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().min(1000).default(15_000),
 });
 
