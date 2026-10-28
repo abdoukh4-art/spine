@@ -60,7 +60,7 @@ The first push ran CI on GitHub. 12 of 14 checks passed. Two failed, and both ta
   new-major risk but ignored known-vulnerability risk in old patch levels.
 - _Experiment:_ upgrade each package to the newest release **in the same major** that's
   past the patched version. Vitest needed a major bump (3 → 4), because the Tinypool RCE fix only exists there.
-- _Result:_ `pnpm audit` reports 0 vulnerabilities, and all 95 unit + 8 integration
+- _Result:_ `pnpm audit` reports 0 vulnerabilities, and all 87 unit + 8 integration
   tests still pass. The upgrade surfaced two Fastify deprecations, which I fixed. I recorded
   the corrected rule in [ADR-0028](../adr/0028-security-patches-override-version-maturity.md)
   instead of editing ADR-0022 (accepted ADRs are immutable; you supersede or amend them).
