@@ -159,6 +159,8 @@ erDiagram
         uuid id PK
         uuid run_id FK
         text step_id
+        uuid alert_id "logical → alerts"
+        text playbook_id
         text status "pending|approved|rejected|expired"
         text approver_role
         text prompt
@@ -170,7 +172,7 @@ erDiagram
     }
     simulated_actions {
         uuid id PK
-        text kind "firewall.block|firewall.unblock|ticket.create|chat.post"
+        text kind "firewall.block|firewall.unblock|ticket.create|ticket.close|chat.post|alert.set_status"
         text idempotency_key UK
         uuid run_id
         text step_id
@@ -212,6 +214,9 @@ erDiagram
 | `domain_events (id) WHERE dispatched_at IS NULL`                                          | The outbox relay scans only undispatched rows                                      |
 | `playbook_runs (status) WHERE status NOT IN (terminal)`                                   | Startup reconciler finds runs to resume                                            |
 | `approvals (status, requested_at)`                                                        | Approval inbox                                                                     |
+| `approvals (expires_at) WHERE status = 'pending'` (0601)                                  | Approval-expiry sweeper ([ADR-0051](../adr/0051-executor-hosting-on-bullmq.md))    |
+| `simulated_actions (kind, created_at DESC, id DESC)` (0601)                               | `GET /simulated-actions?kind=` keyset pages                                        |
+| sequence `simulated_ticket_seq` (0601)                                                    | `SIM-<n>` ticket numbers of the simulated ticketing adapter                        |
 | `refresh_tokens (family_id)`                                                              | Revoke a whole family on reuse                                                     |
 | `audit_log (occurred_at DESC)`, `(actor_id, occurred_at DESC)`                            | Audit queries                                                                      |
 | `audit_log (action text_pattern_ops, id DESC)` (migration `0101`)                         | `GET /audit-log?action=<prefix>` filter                                            |

@@ -1,0 +1,68 @@
+# Brute-force response: when a credential-access alert scores high, ask an analyst to block
+# the source IP for one hour, then notify. A short block limits collateral damage if the
+# source is a shared NAT; it expires on its own.
+apiVersion: spine/v1
+kind: Playbook
+metadata:
+  id: brute-force-response
+  name: Brute-force response
+  version: 1
+  description: >-
+    For high-scoring brute-force / credential-access alerts, block the attacking source IP
+    for 60 minutes after analyst approval, then notify the SOC.
+  tags: [credential-access, brute-force, approval]
+trigger:
+  event: alert.scored
+  when:
+    all:
+      - { field: alert.category, op: eq, value: credential_access }
+      - { field: score.score, op: gte, value: 40 }
+start: threshold
+steps:
+  - id: threshold
+    name: Above the blocking threshold?
+    type: branch
+    branches:
+      - when: { field: score.score, op: gte, value: 70 }
+        next: approve-block
+    default: notify-watch
+
+  - id: approve-block
+    name: Analyst approves a 60-minute block
+    type: approval
+    with:
+      approverRole: analyst
+      prompt: >-
+        Block source IP {{alert.network.sourceIp}} for 60 minutes? "{{alert.title}}"
+        targeting {{alert.user.name}} scored {{score.score}}.
+      expiresInMs: 900000
+      onTimeout: reject
+    next: block
+    onReject: notify-watch
+
+  - id: block
+    name: Block the source IP for 60 minutes
+    type: block_indicator
+    with:
+      indicatorTypes: [ipv4, ipv6]
+      durationMinutes: 60
+      minVerdict: suspicious
+    timeoutMs: 10000
+    retry: { maxAttempts: 3, backoffMs: 500 }
+    compensate: { type: unblock_indicator }
+    next: notify-blocked
+
+  - id: notify-blocked
+    name: Tell the SOC
+    type: notify
+    retry: { maxAttempts: 3, backoffMs: 1000 }
+    with:
+      channel: '#soc-alerts'
+      template: 'Blocked {{steps.block.output.blocked.value}} for 60 minutes after brute force on {{alert.user.name}} ("{{alert.title}}").'
+
+  - id: notify-watch
+    name: Keep watching
+    type: notify
+    with:
+      channel: '#soc-alerts'
+      template: 'Brute force "{{alert.title}}" (score {{score.score}}) not blocked; watching for success after failures.'
