@@ -7,8 +7,8 @@
 #   docker build -f infra/docker/console.Dockerfile -t spine-console .
 # Mirrors / TLS-intercepting proxies: see the build args and secret in api.Dockerfile.
 
-ARG NODE_IMAGE=node:22.22.0-bookworm-slim
-ARG NGINX_IMAGE=nginxinc/nginx-unprivileged:1.28-alpine
+ARG NODE_IMAGE=node:22.23.4-trixie-slim
+ARG NGINX_IMAGE=nginxinc/nginx-unprivileged:1.30-alpine
 
 # ---------------------------------------------------------------------------------------
 FROM ${NODE_IMAGE} AS build
@@ -46,7 +46,17 @@ LABEL org.opencontainers.image.title="spine-console" \
 # into /etc/nginx/conf.d at start); snippets are static includes. The image's default
 # server is removed so only Spine's servers listen.
 USER root
-RUN rm -f /etc/nginx/conf.d/default.conf
+# Apply Alpine security fixes published after the base image was built (registry mirrors
+# can lag by months). Set APK_UPGRADE=false only where the Alpine CDN is unreachable,
+# and expect the image scan to report what the upgrade would have fixed.
+# curl is removed: nothing here needs it (the healthcheck uses busybox wget), and every
+# binary we ship is attack surface and scanner noise.
+ARG APK_UPGRADE=true
+RUN --mount=type=secret,id=build_ca,required=false \
+    if [ -s /run/secrets/build_ca ]; then export SSL_CERT_FILE=/run/secrets/build_ca; fi \
+ && if [ "$APK_UPGRADE" = "true" ]; then apk upgrade --no-cache; fi \
+ && apk del --no-network curl \
+ && rm -f /etc/nginx/conf.d/default.conf
 COPY infra/nginx/nginx.conf /etc/nginx/nginx.conf
 COPY infra/nginx/templates/ /etc/nginx/templates/
 COPY infra/nginx/snippets/ /etc/nginx/snippets/

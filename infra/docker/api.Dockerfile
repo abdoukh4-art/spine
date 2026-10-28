@@ -7,13 +7,13 @@
 # Build from the repository root:
 #   docker build -f infra/docker/api.Dockerfile -t spine-api .
 # Docker Hub rate-limits some environments; use a mirror for the build image:
-#   docker build --build-arg NODE_IMAGE=mirror.gcr.io/library/node:22.22.0-bookworm-slim ...
+#   docker build --build-arg NODE_IMAGE=mirror.gcr.io/library/node:22.23.4-trixie-slim ...
 #
 # Stages: deps (lockfile-only fetch, cached) → build (esbuild bundle, ADR-0027) →
 #         prod (pnpm deploy: production node_modules only) → runtime (distroless, non-root).
 
-ARG NODE_IMAGE=node:22.22.0-bookworm-slim
-ARG RUNTIME_IMAGE=gcr.io/distroless/nodejs22-debian12:nonroot
+ARG NODE_IMAGE=node:22.23.4-trixie-slim
+ARG RUNTIME_IMAGE=gcr.io/distroless/nodejs22-debian13:nonroot
 
 # ---------------------------------------------------------------------------------------
 FROM ${NODE_IMAGE} AS deps
