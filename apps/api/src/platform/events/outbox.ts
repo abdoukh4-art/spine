@@ -54,6 +54,19 @@ export class OutboxEventPublisher implements EventPublisher {
   }
 }
 
+/**
+ * Number of events not yet dispatched by the relay. Ingestion uses it for back-pressure
+ * (ADR-0024): a growing backlog means the pipeline is behind, so stop accepting more work.
+ */
+export async function outboxBacklog(db: Db): Promise<number> {
+  const row = await db
+    .selectFrom('domain_events')
+    .select((eb) => eb.fn.countAll<string>().as('n'))
+    .where('dispatched_at', 'is', null)
+    .executeTakeFirstOrThrow();
+  return Number(row.n);
+}
+
 /** One delivery = one event for one subscriber. */
 export interface EventDelivery {
   subscriber: string;
@@ -130,13 +143,8 @@ export class OutboxRelay {
   }
 
   /** Number of events waiting to be dispatched (used for back-pressure, ADR-0024). */
-  async backlog(): Promise<number> {
-    const row = await this.db
-      .selectFrom('domain_events')
-      .select((eb) => eb.fn.countAll<string>().as('n'))
-      .where('dispatched_at', 'is', null)
-      .executeTakeFirstOrThrow();
-    return Number(row.n);
+  backlog(): Promise<number> {
+    return outboxBacklog(this.db);
   }
 
   /** Starts polling. Drains in a tight loop while batches are full, then sleeps. */

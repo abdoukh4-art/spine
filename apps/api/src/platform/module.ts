@@ -32,6 +32,11 @@ export interface BackgroundTask {
 
 export interface SpineModule {
   readonly name: string;
+  /**
+   * Root-level HTTP extensions (hooks, decorators) applied to EVERY route, e.g. the audit
+   * `onResponse` hook. Runs before any module's routes are registered.
+   */
+  httpPlugins?(app: FastifyInstance): Promise<void> | void;
   /** Registers HTTP routes. Mounted under `/api/v1`. Every route must set `config.access`. */
   routes?(app: FastifyInstance): Promise<void> | void;
   /** Event subscribers (run in the worker process). */

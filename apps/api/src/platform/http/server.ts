@@ -112,6 +112,10 @@ export async function buildHttpServer(options: HttpServerOptions): Promise<Fasti
     () => app.swagger(),
   );
 
+  for (const module of options.modules) {
+    if (module.httpPlugins) await module.httpPlugins(app);
+  }
+
   await app.register(
     async (api) => {
       for (const module of options.modules) {

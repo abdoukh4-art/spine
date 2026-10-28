@@ -223,3 +223,21 @@ describe('runReadinessChecks', () => {
     });
   });
 });
+
+describe('module httpPlugins', () => {
+  it('applies root-level hooks to routes of every module', async () => {
+    const seen: string[] = [];
+    const observer: SpineModule = {
+      name: 'observer',
+      httpPlugins: (root) => {
+        root.addHook('onResponse', (req, _reply, done) => {
+          seen.push(`${req.method} ${req.routeOptions.url ?? ''}`);
+          done();
+        });
+      },
+    };
+    const server = await build([observer, testModule]);
+    await server.inject('/api/v1/public');
+    expect(seen).toContain('GET /api/v1/public');
+  });
+});
