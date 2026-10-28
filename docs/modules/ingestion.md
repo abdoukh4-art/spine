@@ -73,6 +73,7 @@ HTTP endpoints (base `/api/v1`, see [api-contract.md](../architecture/api-contra
 | `POST /ingest/batch?format=…`     | analyst | `text/plain` or `application/x-ndjson`, ≤ 10 MiB. `200 {accepted, deduplicated, rejected, skipped, errors[≤100]}`                                                 |
 
 Readiness check: `ingest-backlog`. Background task: `ingestion.idempotency-cleanup` (every 15 min).
+Rate limit: ingestion routes use their own bucket of 6000 requests/min ([ADR-0024](../adr/0024-api-conventions.md)), keyed by webhook source id, or by client IP for the analyst endpoints (the user is not known yet when the limiter runs).
 Webhook sources are configured in `WEBHOOK_SOURCES_JSON` (`{"<id>": {"normalizer": "suricata-eve" | "cef" | "canonical", "secret": "<≥32 chars>"}}`).
 
 Signing a webhook from a shell, for testing:

@@ -44,6 +44,27 @@ export interface IngestionRouteDeps {
 export const BATCH_BODY_LIMIT = 10 * 1024 * 1024;
 const IDEMPOTENCY_HEADER = 'idempotency-key';
 
+/**
+ * Ingestion has its own rate-limit bucket (ADR-0024: 6000/min per source), so a busy sensor
+ * isn't throttled by the 600/min global API limit, and one noisy source can't starve another.
+ * Webhooks are keyed by source id; analyst endpoints by client IP (the user isn't known yet
+ * when the limiter runs, in `onRequest`).
+ */
+export const INGEST_RATE_LIMIT_PER_MINUTE = 6000;
+const ingestRateLimit = {
+  max: INGEST_RATE_LIMIT_PER_MINUTE,
+  timeWindow: '1 minute',
+  keyGenerator: (req: FastifyRequest) => `ingest:ip:${req.ip}`,
+};
+const webhookRateLimit = {
+  max: INGEST_RATE_LIMIT_PER_MINUTE,
+  timeWindow: '1 minute',
+  keyGenerator: (req: FastifyRequest) => {
+    const params = req.params as { sourceId?: unknown } | undefined;
+    return `ingest:webhook:${typeof params?.sourceId === 'string' ? params.sourceId : 'unknown'}`;
+  },
+};
+
 /** Reads and validates the optional `Idempotency-Key` header. */
 function idempotencyKey(request: FastifyRequest): string | undefined {
   const value = request.headers[IDEMPOTENCY_HEADER];
@@ -92,7 +113,7 @@ export async function registerIngestionRoutes(
     '/alerts',
     {
       onRequest: shed,
-      config: { access: { role: 'analyst' } },
+      config: { access: { role: 'analyst' }, rateLimit: ingestRateLimit },
       schema: {
         tags: ['ingestion'],
         summary: 'Submit one canonical alert (optional Idempotency-Key header)',
@@ -119,7 +140,7 @@ export async function registerIngestionRoutes(
     {
       onRequest: shed,
       bodyLimit: BATCH_BODY_LIMIT,
-      config: { access: { role: 'analyst' } },
+      config: { access: { role: 'analyst' }, rateLimit: ingestRateLimit },
       schema: {
         tags: ['ingestion'],
         summary: 'Bulk import: one record per line (ndjson, cef or suricata-eve); partial success',
@@ -170,7 +191,7 @@ function registerWebhookRoute(
     '/ingest/webhooks/:sourceId',
     {
       onRequest: shed,
-      config: { access: 'webhook' },
+      config: { access: 'webhook', rateLimit: webhookRateLimit },
       schema: {
         tags: ['ingestion'],
         summary:

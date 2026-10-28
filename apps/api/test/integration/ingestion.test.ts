@@ -352,6 +352,8 @@ describe('POST /ingest/webhooks/:sourceId', () => {
   it('accepts a correctly signed Suricata event (raw body is what gets verified)', async () => {
     const res = await signed('suricata', SURICATA_SECRET, c2);
     expect(res.statusCode).toBe(202);
+    // Ingestion has its own, larger rate-limit bucket (ADR-0024), not the global 600/min.
+    expect(res.headers['x-ratelimit-limit']).toBe('6000');
     const row = await alertRow(res.json().alertId);
     expect(row.source_product).toBe('Suricata');
     // The 64-bit flow_id survived because the normalizer read the raw text.
