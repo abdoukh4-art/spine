@@ -28,6 +28,9 @@
   --accent-text: #ffffff;
   --focus: #b45309;
   --danger: #b91c1c;
+  --ok-bg: #dcfce7;
+  --ok-fg: #14532d;
+  --ok-border: #15803d;
 
   --sev-critical-bg: #7f1d1d;
   --sev-critical-fg: #ffffff;
@@ -53,6 +56,9 @@
     --accent-text: #0b1020;
     --focus: #fbbf24;
     --danger: #f87171;
+    --ok-bg: #14532d;
+    --ok-fg: #dcfce7;
+    --ok-border: #4ade80;
     --sev-medium-bg: #a16207;
     --sev-medium-fg: #ffffff;
     --sev-low-bg: #1e3a8a;
@@ -72,6 +78,9 @@
   --accent-text: #0b1020;
   --focus: #fbbf24;
   --danger: #f87171;
+  --ok-bg: #14532d;
+  --ok-fg: #dcfce7;
+  --ok-border: #4ade80;
   --sev-medium-bg: #a16207;
   --sev-medium-fg: #ffffff;
   --sev-low-bg: #1e3a8a;
