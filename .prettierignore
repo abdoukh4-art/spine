@@ -1,0 +1,5 @@
+pnpm-lock.yaml
+dist
+coverage
+docs/architecture/openapi.json
+infra/grafana/dashboards/*.json

@@ -1,0 +1,37 @@
+// Conventional Commits (ADR-0025). Scopes are optional but, when used, should name a module or area.
+export default {
+  extends: ['@commitlint/config-conventional'],
+  rules: {
+    'scope-enum': [
+      1,
+      'always',
+      [
+        'api',
+        'console',
+        'shared-schema',
+        'playbook-engine',
+        'enrichers',
+        'ingestion',
+        'enrichment',
+        'scoring',
+        'playbooks',
+        'alerts',
+        'cases',
+        'auth',
+        'audit',
+        'metrics',
+        'platform',
+        'infra',
+        'observability',
+        'ci',
+        'docs',
+        'deps',
+        'security',
+        'e2e',
+        'demo',
+        'release',
+      ],
+    ],
+    'body-max-line-length': [0],
+  },
+};
