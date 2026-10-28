@@ -1,7 +1,10 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
 import { TEST_NOW } from './test/time';
+
+// findBy*/waitFor default to 1 s; whole-app renders with lazy routes need more headroom on CI.
+configure({ asyncUtilTimeout: 5_000 });
 
 // Freeze only `Date` (timers stay real, so user-event, polling and waitFor work normally).
 vi.useFakeTimers({ toFake: ['Date'] });

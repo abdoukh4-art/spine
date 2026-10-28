@@ -12,6 +12,9 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['src/test-setup.ts'],
+    // Page tests render the whole app and run axe-core; under coverage on a loaded CI runner
+    // they can take a few seconds each.
+    testTimeout: 20_000,
     include: ['src/**/*.test.{ts,tsx}'],
     coverage: {
       provider: 'v8',
