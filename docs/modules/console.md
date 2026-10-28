@@ -97,7 +97,7 @@ parsed with the named `@spine/shared-schema` schema):
 | `GET /runs`                                     | `status`, `playbookId`, `cursor`, `limit=25`                                                                                                                 | `pageSchema(RunSummarySchema)`                                                                                                                                            |
 | `GET /runs/:id`                                 | —                                                                                                                                                            | `RunDetailSchema`; reads event payload keys `attempt`, `error`, `continued`, `taken`, `delayMs`, `reason`, `prompt`, `decidedBy`, `action`, `by`, `dryRun` (all optional) |
 | `POST /runs/:id/cancel`                         | —                                                                                                                                                            | 202; 409 when already terminal                                                                                                                                            |
-| `GET /approvals`                                | `status`, `limit=100`                                                                                                                                        | `pageSchema(ApprovalSchema)`; expects pending ones ordered by `expiresAt` asc                                                                                             |
+| `GET /approvals`                                | `status`, `limit=100`                                                                                                                                        | `pageSchema(ApprovalSchema)`; the inbox sorts pending ones by `expiresAt` client-side                                                                                     |
 | `POST /approvals/:id/decision`                  | `{decision: approve\|reject, comment?}`                                                                                                                      | `ApprovalSchema`; 409 if decided/expired                                                                                                                                  |
 | `GET /simulated-actions`                        | `kind`, `cursor`, `limit=50`                                                                                                                                 | `pageSchema(SimulatedActionSchema)`                                                                                                                                       |
 | `GET /metrics/summary`                          | `from`, `to` (ISO, computed from the 24 h / 7 d / 30 d selector)                                                                                             | `MetricsSummarySchema`                                                                                                                                                    |
@@ -113,7 +113,12 @@ The client also has typed functions for `GET /auth/me`, `/cases`, `/enrichment/p
   are defined locally in `lib/api/client.ts` because `@spine/shared-schema` doesn't export them;
   the playbooks module may want to move them into the shared package.
 - `Approval.prompt` is displayed as-is: the server should render `{{…}}` templates before returning it.
-- `technique` is accepted by `AlertListQuerySchema` but missing from the contract page's query list.
+- After merging develop, the fake follows the clarified contract: `q` matches the title only
+  (ADR-0037), `resolvedAt` keeps the first close (ADR-0036), an unknown assignee is `422`,
+  audit `action` is a prefix filter, approvals come newest first.
+- The real `/auth/refresh` also requires an `Origin` header matching `CORS_ALLOWED_ORIGINS`
+  (ADR-0061). Browsers send it on same-origin `POST`s, so the console needs no change, but the
+  console's origin must be in that list in every deployment.
 
 ## Invariants
 

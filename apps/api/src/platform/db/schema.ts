@@ -99,6 +99,8 @@ export interface AlertsTable {
   source_severity: string;
   score: number | null;
   severity: string | null;
+  /** computedAt of the score last applied by the projection (migration 0201, ADR-0038). */
+  scored_at: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
   occurred_at: Timestamp;
   received_at: Timestamp;
   last_seen_at: Timestamp;
@@ -135,6 +137,12 @@ export interface AlertEnrichmentsTable {
   duration_ms: number;
   fetched_at: Timestamp;
 }
+/** Inbox of processed `alert.ingested` deliveries (migration 0401, ADR-0040). */
+export interface EnrichmentProcessedEventsTable {
+  event_id: string;
+  alert_id: string;
+  processed_at: Timestamp;
+}
 
 // ---------------------------------------------------------------- scoring
 export interface AlertScoresTable {
@@ -144,6 +152,8 @@ export interface AlertScoresTable {
   severity: string;
   explanation: Json;
   computed_at: Timestamp;
+  /** `occurredAt` of the enrichment snapshot the score was computed from (migration 0501). */
+  source_occurred_at: GeneratedTimestamp;
 }
 
 // ---------------------------------------------------------------- playbooks
@@ -219,6 +229,7 @@ export interface Database {
   alerts: AlertsTable;
   idempotency_keys: IdempotencyKeysTable;
   alert_enrichments: AlertEnrichmentsTable;
+  enrichment_processed_events: EnrichmentProcessedEventsTable;
   alert_scores: AlertScoresTable;
   playbooks: PlaybooksTable;
   playbook_runs: PlaybookRunsTable;

@@ -28,7 +28,15 @@ describe('run detail', () => {
       within(steps).getByRole('rowheader', { name: 'notify-soc' }).closest('tr'),
     ).toHaveTextContent('Pending');
     const timeline = screen.getByRole('list', { name: 'Run events, oldest first' });
-    expect(within(timeline).getByText('Approved by Ada Admin')).toBeInTheDocument();
+    expect(within(timeline).getByText('Approved by an analyst')).toBeInTheDocument();
+    expect(
+      within(timeline).getByText('“Confirmed ransomware staging host. Contain.”'),
+    ).toBeInTheDocument();
+    expect(
+      within(timeline).getByText(
+        'Step “open-ticket” failed: Ticketing API returned 503 Service Unavailable',
+      ),
+    ).toBeInTheDocument();
     expect(within(timeline).getByText('Retry of “open-ticket” scheduled')).toBeInTheDocument();
     expect(
       within(timeline).getByText('Run compensated: completed steps were undone'),
@@ -118,11 +126,24 @@ describe('describeRunEvent', () => {
       'No error message',
     );
     expect(describeRunEvent(event('step.started', { attempt: 3 })).description).toBe('Attempt 3');
-    expect(describeRunEvent(event('step.succeeded', { taken: 'next' })).description).toBe(
-      'Branch taken → next',
-    );
+    expect(
+      describeRunEvent(
+        event('step.succeeded', { attempt: 1, output: { taken: 'next', matchedBranch: 0 } }),
+      ).description,
+    ).toBe('Branch taken → next');
     expect(describeRunEvent(event('run.started', { dryRun: true })).title).toBe('Dry run started');
-    expect(describeRunEvent(event('run.cancelled', { by: 'Sam' })).description).toBe('By Sam');
+    expect(
+      describeRunEvent(event('run.cancelled', { previousStatus: 'running' })).description,
+    ).toBe('It was running');
+    expect(describeRunEvent(event('approval.rejected', { reason: 'timeout' })).title).toMatch(
+      /expired/,
+    );
+    expect(describeRunEvent(event('approval.granted', { reason: 'timeout' })).title).toMatch(
+      /expired/,
+    );
+    expect(
+      describeRunEvent(event('compensation.started', { failure: { stepId: 'x' } })).description,
+    ).toBe('Step “x” failed');
     expect(describeRunEvent(event('compensation.step_failed')).description).toBe(
       'Manual clean-up needed',
     );

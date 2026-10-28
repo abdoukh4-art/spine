@@ -108,12 +108,8 @@ function alertMatches(stored: StoredAlert, q: URLSearchParams): boolean {
   if (q.get('category') && alert.category !== q.get('category')) return false;
   if (q.get('assigneeId') && stored.assigneeId !== q.get('assigneeId')) return false;
   if (technique && !alert.mitre.some((m) => m.techniqueId.startsWith(technique))) return false;
-  if (text) {
-    const haystack = [alert.title, alert.description ?? '', ...alert.indicators.map((i) => i.value)]
-      .join(' ')
-      .toLowerCase();
-    if (!haystack.includes(text)) return false;
-  }
+  // ADR-0037: `q` is a case-insensitive substring of the title only.
+  if (text && !alert.title.toLowerCase().includes(text)) return false;
   return true;
 }
 
@@ -176,11 +172,13 @@ function updateAlert(ctx: RouteContext): Response {
     }
     stored.alert.status = body.status;
     const closed: AlertStatus[] = ['resolved', 'false_positive'];
-    stored.resolvedAt = closed.includes(body.status) ? iso(ctx.now) : null;
+    // ADR-0036: resolvedAt is the *first* close and never moves (not even on reopen).
+    if (closed.includes(body.status) && stored.resolvedAt === null)
+      stored.resolvedAt = iso(ctx.now);
   }
   if (body.assigneeId !== undefined) {
     if (body.assigneeId !== null && !ctx.server.db.users.some((u) => u.id === body.assigneeId)) {
-      throw new FakeProblem(400, 'validation-error', 'Unknown assignee');
+      throw new FakeProblem(422, 'unprocessable', 'Unknown assignee');
     }
     stored.assigneeId = body.assigneeId;
   }
@@ -310,7 +308,16 @@ function decideApproval(ctx: RouteContext): Response {
     const type = body.decision === 'approve' ? 'approval.granted' : 'approval.rejected';
     applyEvent(
       stored,
-      { type, stepId: approval.stepId, payload: { decidedBy: user.displayName } },
+      {
+        type,
+        stepId: approval.stepId,
+        payload: {
+          approvalId: approval.id,
+          decidedBy: user.id,
+          comment: approval.comment,
+          reason: 'decision',
+        },
+      },
       iso(ctx.now),
     );
     const step = stored.definition.steps.find((s) => s.id === approval.stepId);
@@ -333,7 +340,11 @@ function cancelRun(ctx: RouteContext): Response {
   stored.planned = [];
   applyEvent(
     stored,
-    { type: 'run.cancelled', stepId: null, payload: { by: ctx.user?.displayName ?? null } },
+    {
+      type: 'run.cancelled',
+      stepId: null,
+      payload: { cancelledBy: ctx.user?.id ?? null, previousStatus: stored.run.status },
+    },
     iso(ctx.now),
   );
   return empty(202);
@@ -584,11 +595,8 @@ export const ROUTES: FakeRoute[] = [
       }
       const items: Approval[] = ctx.server.db.approvals
         .filter((a) => !status || a.status === status)
-        .sort((a, b) =>
-          status === 'pending'
-            ? a.expiresAt.localeCompare(b.expiresAt)
-            : b.requestedAt.localeCompare(a.requestedAt),
-        );
+        // Same order as the real API: newest request first.
+        .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
       return json(200, paginate(items, ctx.query));
     },
   },
@@ -687,7 +695,8 @@ export const ROUTES: FakeRoute[] = [
         .filter(
           (e) =>
             (!q.get('actorId') || e.actorId === q.get('actorId')) &&
-            (!action || e.action.toLowerCase().includes(action)),
+            // The contract defines `action` as a prefix filter.
+            (!action || e.action.toLowerCase().startsWith(action)),
         )
         .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
       return json(200, paginate(items, q));

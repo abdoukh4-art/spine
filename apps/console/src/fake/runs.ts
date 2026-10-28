@@ -58,8 +58,13 @@ export function planFrom(
     }
     events.push({ type: 'step.started', stepId: step.id, payload: { attempt: 1 } });
     if (step.type === 'branch') {
+      const matched = step.branches[0] ? 0 : null;
       const taken = step.branches[0]?.next ?? step.default;
-      events.push({ type: 'step.succeeded', stepId: step.id, payload: { taken: taken ?? null } });
+      events.push({
+        type: 'step.succeeded',
+        stepId: step.id,
+        payload: { attempt: 1, output: { taken: taken ?? null, matchedBranch: matched } },
+      });
       stepId = taken;
       continue;
     }

@@ -1,0 +1,42 @@
+# TLS server (port 8443 in the container; publish it as 443 in production). ADR-0082.
+#
+# Certificates are mounted at /etc/nginx/tls (server.crt = full chain, server.key).
+# For local use, `scripts/dev-certs.sh` creates a self-signed pair in infra/tls/.
+# If no certificate is mounted, docker-entrypoint.d/40-spine-tls.sh removes this file
+# at start-up and nginx serves plain HTTP only (with a warning in the log).
+#
+# Settings follow the Mozilla "intermediate" profile (TLS 1.2 + 1.3), which still serves
+# every browser from the last ~5 years. Switch to "modern" (TLS 1.3 only) when all clients
+# allow it: https://ssl-config.mozilla.org/
+server {
+    listen 8443 ssl;
+    http2 on;
+    server_name ${SPINE_SERVER_NAME};
+
+    ssl_certificate     /etc/nginx/tls/server.crt;
+    ssl_certificate_key /etc/nginx/tls/server.key;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
+    ssl_prefer_server_ciphers off;   # let modern clients pick (they choose well)
+    ssl_session_cache shared:SpineTLS:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;         # tickets weaken forward secrecy unless keys rotate
+
+    # OCSP stapling: enable when your CA publishes OCSP responders and nginx can reach
+    # them (needs a `resolver`). Some public CAs (e.g. Let's Encrypt since 2025) have
+    # dropped OCSP in favour of short-lived certificates and CRLs, so it is off by default:
+    #     ssl_stapling on; ssl_stapling_verify on;
+    #     ssl_trusted_certificate /etc/nginx/tls/chain.pem; resolver 1.1.1.1 valid=300s;
+
+    # HSTS is added by the shared header snippets; see the $spine_hsts map in
+    # 10-spine-http.conf.template (sent over TLS only, max-age from SPINE_HSTS_MAX_AGE).
+
+    location = /nginx-health {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    include /etc/nginx/snippets/spine-locations.conf;
+}

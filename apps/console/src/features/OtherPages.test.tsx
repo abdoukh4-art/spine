@@ -151,7 +151,7 @@ describe('admin: audit log', () => {
       within(table).getAllByRole('rowheader', { name: 'auth.login.succeeded' }).length,
     ).toBeGreaterThan(0);
     await expectNoAxeViolations(container);
-    await user.type(screen.getByRole('textbox', { name: 'Action contains' }), 'approval');
+    await user.type(screen.getByRole('textbox', { name: /Action starts with/ }), 'approval');
     await user.click(screen.getByRole('button', { name: 'Apply filters' }));
     await waitFor(() => expect(currentLocation()).toBe('/admin/audit-log?action=approval'));
     await waitFor(() =>

@@ -1,0 +1,148 @@
+# Spine scoring ruleset, version 1 (ADR-0015).
+#
+#   score = clamp(0, 100, baseline(source severity) + sum of the points of every matching rule)
+#
+# - Conditions use the shared predicate language (ADR-0013): {all|any|not} and
+#   {field, op, value} with op in eq|neq|gt|gte|lt|lte|in|contains|exists|matches.
+# - `field` is a dotted path into the evaluation context { alert, enrichment }.
+#   Every available path is documented in docs/modules/scoring.md ("Evaluation context").
+#   A path that doesn't start with a real key fails validation at startup.
+# - `evidenceField` (optional) is the path quoted as evidence in the explanation. Without it,
+#   the value of the rule's first field is quoted.
+# - A missing value never matches (except under `not`): if the asset inventory was down,
+#   `enrichment.asset.criticality eq critical` is simply false, and the explanation lists
+#   the provider under dataGaps.
+#
+# Changing a rule's meaning = a NEW file with a new version (scores record the version they
+# were computed with). Typos and comment fixes may be made in place.
+version: 1
+description: >-
+  Initial ruleset: threat-intel verdicts, asset criticality, high-impact ATT&CK tactics,
+  anonymizing infrastructure, repetition, and a discount for authorized scanners.
+
+# Where every alert starts, from the severity the source tool reported. Vendors disagree on
+# what "high" means, so the baseline is deliberately modest and the rules do most of the work.
+baseline:
+  fromSeverity:
+    informational: 0
+    low: 10
+    medium: 25
+    high: 40
+    critical: 55
+
+rules:
+  # ---------------------------------------------------------------- threat intelligence
+  - id: malicious-indicator
+    description: At least one indicator has a malicious reputation verdict
+    when: { field: enrichment.verdicts, op: contains, value: malicious }
+    points: 30
+    evidenceField: enrichment.maliciousIndicators
+
+  # Only when nothing is outright malicious; otherwise the rule above already covers it.
+  - id: suspicious-indicator
+    description: At least one indicator is suspicious (and none is malicious)
+    when:
+      all:
+        - { field: enrichment.verdicts, op: contains, value: suspicious }
+        - not: { field: enrichment.verdicts, op: contains, value: malicious }
+    points: 10
+    evidenceField: enrichment.suspiciousIndicators
+
+  # Command-and-control tags are the strongest sign of an active compromise.
+  - id: known-c2-infrastructure
+    description: An indicator is tagged as command-and-control infrastructure
+    when: { field: enrichment.reputationTags, op: contains, value: c2 }
+    points: 10
+    evidenceField: enrichment.reputationTags
+
+  # ---------------------------------------------------------------- asset context
+  - id: critical-asset
+    description: The affected host is a critical asset (e.g. domain controller, payment database)
+    when: { field: enrichment.asset.criticality, op: eq, value: critical }
+    points: 20
+    evidenceField: enrichment.asset.hostname
+
+  - id: high-value-asset
+    description: The affected host is a high-criticality asset
+    when: { field: enrichment.asset.criticality, op: eq, value: high }
+    points: 10
+    evidenceField: enrichment.asset.hostname
+
+  # An explicit combination rule: additive scoring can't see that A and B together are
+  # worse than A + B, so we say it out loud (ADR-0015, "interactions").
+  - id: confirmed-malware-on-important-asset
+    description: Malware alert with a malicious indicator on a high or critical asset
+    when:
+      all:
+        - { field: alert.category, op: eq, value: malware }
+        - { field: enrichment.verdicts, op: contains, value: malicious }
+        - { field: enrichment.asset.criticality, op: in, value: [high, critical] }
+    points: 10
+    evidenceField: enrichment.asset.hostname
+
+  # ---------------------------------------------------------------- MITRE ATT&CK tactics
+  # `alert.mitre.tacticId` maps over the alert's ATT&CK mappings and yields the list of
+  # tactic IDs, e.g. ["TA0001", "TA0006"].
+  - id: credential-access-tactic
+    description: Mapped to MITRE ATT&CK TA0006 (Credential Access)
+    when: { field: alert.mitre.tacticId, op: contains, value: TA0006 }
+    points: 15
+
+  # OS credential dumping (T1003 and its sub-techniques, e.g. T1003.001 LSASS memory).
+  - id: credential-dumping-technique
+    description: Mapped to T1003 OS Credential Dumping (any sub-technique)
+    when: { field: alert.mitre.techniqueId, op: matches, value: '^T1003(\.\d{3})?$' }
+    points: 10
+    evidenceField: alert.mitre.techniqueId
+
+  - id: lateral-movement-tactic
+    description: Mapped to MITRE ATT&CK TA0008 (Lateral Movement)
+    when: { field: alert.mitre.tacticId, op: contains, value: TA0008 }
+    points: 15
+
+  - id: exfiltration-tactic
+    description: Mapped to MITRE ATT&CK TA0010 (Exfiltration)
+    when: { field: alert.mitre.tacticId, op: contains, value: TA0010 }
+    points: 20
+
+  - id: command-and-control-tactic
+    description: Mapped to MITRE ATT&CK TA0011 (Command and Control)
+    when: { field: alert.mitre.tacticId, op: contains, value: TA0011 }
+    points: 15
+
+  # ---------------------------------------------------------------- network context
+  - id: tor-exit-node
+    description: Traffic involves a Tor exit node
+    when: { field: enrichment.geo.isTor, op: eq, value: true }
+    points: 10
+    evidenceField: enrichment.geo.torIps
+
+  # ---------------------------------------------------------------- category-specific
+  - id: phishing-with-malicious-url
+    description: Phishing alert whose URL is known to be malicious
+    when:
+      all:
+        - { field: alert.category, op: eq, value: phishing }
+        - { field: enrichment.maliciousIndicatorTypes, op: contains, value: url }
+    points: 15
+    evidenceField: enrichment.maliciousIndicators
+
+  # ---------------------------------------------------------------- volume
+  # The same alert firing again and again (deduplicated, ADR-0012) is either a persistent
+  # problem or a noisy rule. Either way someone should look.
+  - id: repeated-alert
+    description: The same alert has repeated at least 10 times
+    when: { field: alert.duplicateCount, op: gte, value: 10 }
+    points: 10
+    evidenceField: alert.duplicateCount
+
+  # ---------------------------------------------------------------- noise reduction
+  # Our own vulnerability scanners trigger recon and intrusion signatures all day. Negative
+  # points push them down the queue without hiding them.
+  - id: authorized-scanner
+    description: Source is a known, authorized vulnerability scanner
+    when:
+      any:
+        - { field: enrichment.reputationTags, op: contains, value: authorized-scanner }
+        - { field: enrichment.asset.tags, op: contains, value: authorized-scanner }
+    points: -25

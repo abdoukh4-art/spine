@@ -32,6 +32,23 @@ interface DomainEvent<TType extends string, TPayload> {
 | `approval.requested` (1)     | playbooks  | `{approvalId, runId, stepId, approverRole, prompt, expiresAt}`             | (console via polling)                                                    |                                                       |
 | `approval.decided` (1)       | playbooks  | `{approvalId, runId, decision, decidedBy}`                                 | playbooks executor (resume)                                              |                                                       |
 
+Phase 1 note (alerts): the `alert.scored` consumer is the subscriber `alerts.project-score`. It
+writes `score`/`severity` and ignores a score older than the one already applied, because
+redeliveries can arrive out of order ([ADR-0038](../adr/0038-score-projection-ordering-guard.md)).
+
+## Delivery notes: enrichment and scoring
+
+- `alert.enriched`: `enrichments` is the alert's **merged** stored set, not only the
+  latest run's results. A failed lookup never replaces an earlier success
+  ([ADR-0041](../adr/0041-enrichment-merge-keeps-last-success.md)). It is published exactly
+  once per `alert.ingested` event, even under concurrent redelivery
+  ([ADR-0040](../adr/0040-enrichment-idempotent-receiver.md)), plus once per explicit
+  re-enrichment (`POST /alerts/:id/enrich`, playbook `enrich` step).
+- `alert.scored`: published only when the score for (alert, ruleset version) is new or
+  its explanation changed, and only from an equal-or-newer enrichment snapshot. Duplicates,
+  identical re-enrichments and stale out-of-order events publish nothing
+  ([ADR-0042](../adr/0042-scoring-publish-only-on-change.md)).
+
 ## Evolution rules
 
 1. **Additive changes only** within a version: new optional fields are fine.

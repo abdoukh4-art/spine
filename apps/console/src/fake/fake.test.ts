@@ -143,11 +143,10 @@ describe('fake server honours the contract', () => {
     await api.auth.refresh();
     const closed = fakeId(ID_KIND.alert, 9);
     expect(await status(api.alerts.update(closed, { status: 'triaged' }))).toBe(409);
-    await expect(api.alerts.update(closed, { status: 'in_progress' })).resolves.toMatchObject({
-      resolvedAt: null,
-    });
+    const reopened = await api.alerts.update(closed, { status: 'in_progress' });
+    expect(reopened.resolvedAt).not.toBeNull(); // the first close is kept (ADR-0036)
     expect(await status(api.alerts.update(closed, { assigneeId: fakeId(ID_KIND.user, 999) }))).toBe(
-      400,
+      422,
     );
     expect(await status(api.alerts.get(fakeId(ID_KIND.alert, 9999)))).toBe(404);
     const bySeverity = await api.alerts.list({

@@ -1,11 +1,17 @@
-import type { Worker } from 'bullmq';
+import { Queue, type Worker } from 'bullmq';
 import { createApplication } from './composition.js';
 import { loadConfig } from './platform/config.js';
-import { OutboxRelay } from './platform/events/outbox.js';
+import { OutboxRelay, outboxBacklog } from './platform/events/outbox.js';
 import { installGracefulShutdown, type Closer } from './platform/lifecycle.js';
 import { createLogger } from './platform/logger.js';
-import { BullMqDeliveryQueue, createRedis, startEventWorker } from './platform/queue/bullmq.js';
-import { startTelemetry } from './platform/telemetry/index.js';
+import {
+  BullMqDeliveryQueue,
+  QUEUE_NAMES,
+  createRedis,
+  startEventWorker,
+} from './platform/queue/bullmq.js';
+import { getMeter, registerRuntimeGauges, traceEventHandling } from './platform/telemetry/index.js';
+import { startTelemetry } from './platform/telemetry/sdk.js';
 
 /**
  * Worker process entrypoint: outbox relay, event subscribers and module background tasks
@@ -35,6 +41,18 @@ async function main(): Promise<void> {
     subscriptions: app.subscriptions,
     logger,
     concurrency: config.EVENT_WORKER_CONCURRENCY,
+    // Continue the publisher's trace across the outbox → BullMQ hop (ADR-0019).
+    around: (event, fn) => traceEventHandling(event, fn),
+  });
+  // Saturation gauges, observed on each Prometheus scrape (spine_queue_depth, spine_outbox_backlog).
+  const observedQueues = Object.values(QUEUE_NAMES).map(
+    (name) => new Queue(name, { connection: redis }),
+  );
+  const stopGauges = registerRuntimeGauges({
+    meter: getMeter(),
+    logger,
+    queues: observedQueues,
+    outboxBacklog: () => outboxBacklog(app.deps.db),
   });
   const tasks = app.modules.flatMap((m) => m.backgroundTasks?.() ?? []);
 
@@ -50,6 +68,13 @@ async function main(): Promise<void> {
     { name: 'event-worker', close: () => eventWorker.close() },
     ...tasks.map((t) => ({ name: t.name, close: () => t.stop() })),
     { name: 'delivery-queue', close: () => deliveryQueue.close() },
+    {
+      name: 'runtime-gauges',
+      close: async () => {
+        stopGauges();
+        await Promise.all(observedQueues.map((q) => q.close()));
+      },
+    },
     { name: 'database', close: () => app.deps.db.destroy() },
     { name: 'redis', close: async () => void (await redis.quit()) },
     { name: 'telemetry', close: () => telemetry.shutdown() },

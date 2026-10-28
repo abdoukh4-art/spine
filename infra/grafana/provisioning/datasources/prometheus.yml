@@ -1,0 +1,14 @@
+# Provisioned at Grafana start-up (ADR-0019): no click-ops, the stack is reproducible.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus # dashboards reference this uid
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: 15s # = scrape_interval, so $__rate_interval is computed correctly
+      httpMethod: POST

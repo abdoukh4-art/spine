@@ -65,7 +65,7 @@ export default function AuditLogPage() {
         description="Every mutating request and security event. Append-only."
       />
       <form className="sp-section sp-row" onSubmit={submit} aria-label="Audit log filters">
-        <TextInput label="Action contains" {...field('action')} />
+        <TextInput label="Action starts with" hint="e.g. auth. or approval." {...field('action')} />
         <TextInput label="Actor ID" hint="User UUID" {...field('actorId')} />
         <TextInput label="From (UTC)" type="datetime-local" {...field('from')} />
         <TextInput label="To (UTC)" type="datetime-local" {...field('to')} />

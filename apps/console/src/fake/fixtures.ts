@@ -105,6 +105,19 @@ interface RunSpec {
   planned?: Script;
 }
 
+/** Payload of a branch decision, as the engine records it (`output: {taken, matchedBranch}`). */
+const branchTaken = (taken: string, matchedBranch: number | null) => ({
+  attempt: 1,
+  output: { taken, matchedBranch },
+});
+
+/** Payload of a human decision, as the playbooks module records it. */
+const decision = (decidedBy: string, comment: string) => ({
+  decidedBy,
+  comment,
+  reason: 'decision',
+});
+
 const toPlanned = ([type, stepId, payload]: Script[number]): PlannedEvent => ({
   type,
   stepId,
@@ -118,7 +131,7 @@ const C2_TO_APPROVAL: Script = [
   ['step.started', 'score', { attempt: 1 }],
   ['step.succeeded', 'score', { output: { score: 100 } }],
   ['step.started', 'severity-gate', { attempt: 1 }],
-  ['step.succeeded', 'severity-gate', { taken: 'approve-block' }],
+  ['step.succeeded', 'severity-gate', branchTaken('approve-block', 0)],
   ['step.started', 'approve-block', { attempt: 1 }],
   ['approval.requested', 'approve-block', {}],
 ];
@@ -151,7 +164,7 @@ const RUN_SPECS: RunSpec[] = [
       ['step.started', 'enrich', { attempt: 1 }],
       ['step.succeeded', 'enrich', { output: { lookups: 3, failed: 0 } }],
       ['step.started', 'verdict', { attempt: 1 }],
-      ['step.succeeded', 'verdict', { taken: 'ticket' }],
+      ['step.succeeded', 'verdict', branchTaken('ticket', 0)],
       ['step.started', 'ticket', { attempt: 1 }],
       ['step.succeeded', 'ticket', { output: { ticketId: 'SIM-SOC-4821' } }],
       ['step.started', 'notify', { attempt: 1 }],
@@ -171,7 +184,7 @@ const RUN_SPECS: RunSpec[] = [
       ['step.started', 'enrich', { attempt: 1 }],
       ['step.succeeded', 'enrich', { output: { lookups: 3, failed: 0 } }],
       ['step.started', 'verdict', { attempt: 1 }],
-      ['step.succeeded', 'verdict', { taken: 'close-benign' }],
+      ['step.succeeded', 'verdict', branchTaken('close-benign', null)],
       ['step.started', 'close-benign', { attempt: 1 }],
       ['step.succeeded', 'close-benign', { output: { wouldSetStatus: 'false_positive' } }],
       ['run.succeeded', null],
@@ -185,7 +198,11 @@ const RUN_SPECS: RunSpec[] = [
     trigger: 'manual',
     script: [
       ...C2_TO_APPROVAL,
-      ['approval.granted', 'approve-block', { decidedBy: 'Ada Admin' }],
+      [
+        'approval.granted',
+        'approve-block',
+        decision(DEMO_USERS.admin.id, 'Confirmed ransomware staging host. Contain.'),
+      ],
       ['step.started', 'block-ip', { attempt: 1 }],
       ['step.succeeded', 'block-ip', { output: { blocked: ['185.220.101.47'] } }],
       ['step.started', 'open-ticket', { attempt: 1 }],
@@ -201,8 +218,17 @@ const RUN_SPECS: RunSpec[] = [
         'open-ticket',
         { attempt: 2, error: 'Ticketing API returned 503 Service Unavailable' },
       ],
-      ['compensation.started', null, { reason: 'step open-ticket failed' }],
-      ['compensation.step_succeeded', 'block-ip', { action: 'unblock_indicator' }],
+      [
+        'compensation.started',
+        null,
+        {
+          failure: {
+            stepId: 'open-ticket',
+            error: 'Ticketing API returned 503 Service Unavailable',
+          },
+        },
+      ],
+      ['compensation.step_succeeded', 'block-ip', { output: { unblocked: ['185.220.101.47'] } }],
       ['run.compensated', null],
     ],
   },
@@ -243,7 +269,7 @@ const RUN_SPECS: RunSpec[] = [
       ['step.started', 'score', { attempt: 1 }],
       ['step.succeeded', 'score', { output: { score: 85 } }],
       ['step.started', 'severity-gate', { attempt: 1 }],
-      ['step.succeeded', 'severity-gate', { taken: 'notify-soc' }],
+      ['step.succeeded', 'severity-gate', branchTaken('notify-soc', null)],
       ['step.started', 'notify-soc', { attempt: 1 }],
       ['step.succeeded', 'notify-soc', { output: { delivered: true } }],
       ['run.succeeded', null],
@@ -257,7 +283,11 @@ const RUN_SPECS: RunSpec[] = [
     trigger: 'auto',
     script: [
       ...C2_TO_APPROVAL,
-      ['approval.rejected', 'approve-block', { decidedBy: 'Sam Analyst' }],
+      [
+        'approval.rejected',
+        'approve-block',
+        decision(DEMO_USERS.analyst.id, 'Approved internal scanner, not a C2 host.'),
+      ],
       ['step.started', 'notify-soc', { attempt: 1 }],
       ['step.succeeded', 'notify-soc', { output: { delivered: true } }],
       ['run.succeeded', null],
@@ -315,11 +345,7 @@ function approvalFor(
   const prompt = step?.type === 'approval' ? step.with.prompt : 'Approve?';
   const requestedAt = requested?.occurredAt ?? stored.run.createdAt;
   const decidedBy =
-    decision?.payload.decidedBy === 'Ada Admin'
-      ? DEMO_USERS.admin.id
-      : decision
-        ? DEMO_USERS.analyst.id
-        : null;
+    typeof decision?.payload.decidedBy === 'string' ? decision.payload.decidedBy : null;
   return {
     id: fakeId(ID_KIND.approval, n),
     runId: stored.run.id,
@@ -336,11 +362,13 @@ function approvalFor(
     decidedAt: decision?.occurredAt ?? null,
     decidedBy,
     comment:
-      decision?.type === 'approval.granted'
-        ? 'Confirmed ransomware staging host. Contain.'
-        : decision
-          ? 'Approved internal scanner, not a C2 host.'
-          : null,
+      typeof decision?.payload.comment === 'string'
+        ? decision.payload.comment
+        : decision?.type === 'approval.granted'
+          ? 'Confirmed ransomware staging host. Contain.'
+          : decision
+            ? 'Approved internal scanner, not a C2 host.'
+            : null,
   };
 }
 

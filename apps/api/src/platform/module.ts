@@ -43,6 +43,11 @@ export interface SpineModule {
   subscribers?(): EventHandler[];
   /** Background tasks (run in the worker process). */
   backgroundTasks?(): BackgroundTask[];
+  /**
+   * One-off work run by the API process after migrations and before it starts listening
+   * (e.g. the auth module's first-run admin bootstrap). Must be idempotent: every replica runs it.
+   */
+  startup?(): Promise<void>;
   /** Named readiness probes contributed to `/readyz`. */
   readinessChecks?(): Record<string, () => Promise<boolean>>;
 }

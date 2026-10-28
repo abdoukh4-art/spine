@@ -3,6 +3,7 @@ import {
   AlertCategorySchema,
   AlertSchema,
   AlertStatusSchema,
+  CanonicalAlertInputSchema,
   MitreMappingSchema,
 } from './alert.js';
 import { IdSchema, SeveritySchema, TimestampSchema } from './common.js';
@@ -32,6 +33,11 @@ export const BatchResultSchema = z.object({
   accepted: z.number().int(),
   deduplicated: z.number().int(),
   rejected: z.number().int(),
+  /**
+   * Lines that were well-formed but not alerts (e.g. Suricata `flow`/`dns` telemetry in an EVE
+   * file). Added in Phase 1 (additive): they are neither ingested nor errors.
+   */
+  skipped: z.number().int(),
   errors: z.array(z.object({ line: z.number().int(), message: z.string() })).max(100),
 });
 export type BatchResult = z.infer<typeof BatchResultSchema>;
@@ -120,6 +126,18 @@ export const CaseSchema = z.object({
 });
 export type Case = z.infer<typeof CaseSchema>;
 
+/** `GET /cases/:id`: the case plus summaries of its linked alerts. */
+export const CaseDetailSchema = CaseSchema.extend({ alerts: z.array(AlertSummarySchema) });
+export type CaseDetail = z.infer<typeof CaseDetailSchema>;
+
+/** `GET /cases` query: optional status filter + cursor pagination (ADR-0024). */
+export const CaseListQuerySchema = z.object({
+  status: CaseStatusSchema.optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+  cursor: z.string().max(512).optional(),
+});
+export type CaseListQuery = z.infer<typeof CaseListQuerySchema>;
+
 export const CreateCaseRequestSchema = z.object({
   title: z.string().min(1).max(300),
   description: z.string().max(10_000).optional(),
@@ -160,6 +178,29 @@ export const RunListQuerySchema = z.object({
   cursor: z.string().max(512).optional(),
 });
 export type RunListQuery = z.infer<typeof RunListQuerySchema>;
+
+// ---------- enrichment & scoring ----------
+
+export const AlertIdParamsSchema = z.object({ id: IdSchema });
+export type AlertIdParams = z.infer<typeof AlertIdParamsSchema>;
+
+/** `202` body of `POST /alerts/:id/enrich`: the alert's enrichment after the re-run (stored, merged view). */
+export const ReEnrichResponseSchema = z.object({
+  alertId: IdSchema,
+  enrichments: z.array(EnrichmentResultSchema),
+});
+export type ReEnrichResponse = z.infer<typeof ReEnrichResponseSchema>;
+
+/**
+ * Body of `POST /scoring/preview`. `alert` may be a stored `Alert` (as returned by
+ * `GET /alerts/:id`) or a bare `CanonicalAlertInput`; identity/lifecycle fields missing
+ * from the latter are filled with neutral placeholders (duplicateCount 0, status new).
+ */
+export const ScorePreviewRequestSchema = z.object({
+  alert: z.union([AlertSchema, CanonicalAlertInputSchema]),
+  enrichments: z.array(EnrichmentResultSchema).max(2000).default([]),
+});
+export type ScorePreviewRequest = z.infer<typeof ScorePreviewRequestSchema>;
 
 // ---------- health ----------
 

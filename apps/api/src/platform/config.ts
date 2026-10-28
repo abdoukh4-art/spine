@@ -16,8 +16,8 @@ const csv = z.string().transform((v) =>
 );
 
 export const WebhookSourceSchema = z.object({
-  /** Normalizer used for this source's payloads. */
-  normalizer: z.enum(['canonical', 'suricata-eve', 'cef', 'generic']),
+  /** Normalizer used for this source's payloads (`generic` was removed in ADR-0030). */
+  normalizer: z.enum(['canonical', 'suricata-eve', 'cef']),
   /** HMAC-SHA256 shared secret (≥ 32 chars). */
   secret: z.string().min(32),
 });
@@ -49,6 +49,13 @@ const ConfigSchema = z.object({
     .min(3600)
     .default(7 * 24 * 3600),
   COOKIE_SECURE: bool.default(true),
+  /** Login attempts allowed per minute, per client IP AND per username (ADR-0024). */
+  AUTH_LOGIN_MAX_PER_MINUTE: z.coerce.number().int().min(1).max(1000).default(10),
+  /** How long the authenticator may reuse a loaded user (ADR-0060). 0 disables caching. */
+  AUTH_USER_CACHE_TTL_SECONDS: z.coerce.number().int().min(0).max(30).default(30),
+  /** First-run admin, created only when the users table is empty (ADR-0066). */
+  BOOTSTRAP_ADMIN_EMAIL: z.email().max(254).optional(),
+  BOOTSTRAP_ADMIN_PASSWORD: z.string().min(12).max(128).optional(),
 
   INGEST_MAX_BACKLOG: z.coerce.number().int().min(1).default(10_000),
   WEBHOOK_SOURCES_JSON: z
@@ -69,6 +76,7 @@ const ConfigSchema = z.object({
   OUTBOX_BATCH_SIZE: z.coerce.number().int().min(1).max(1000).default(100),
   EVENT_WORKER_CONCURRENCY: z.coerce.number().int().min(1).default(8),
   PLAYBOOK_WORKER_CONCURRENCY: z.coerce.number().int().min(1).default(4),
+  PLAYBOOK_APPROVAL_SWEEP_INTERVAL_MS: z.coerce.number().int().min(1000).default(30_000),
 
   METRICS_PORT: z.coerce.number().int().min(0).max(65535).default(9464),
   OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
@@ -76,6 +84,17 @@ const ConfigSchema = z.object({
   CONFIG_DIR: z.string().default('config'),
   SIMULATION_LATENCY_MS: z.coerce.number().int().min(0).default(50),
   SIMULATION_FAILURE_RATE: z.coerce.number().min(0).max(1).default(0),
+
+  // Enrichment (ADR-0014, ADR-0044, ADR-0045): mock provider behaviour + resilience budget.
+  ENRICHMENT_LATENCY_MS: z.coerce.number().int().min(0).max(60_000).default(30),
+  ENRICHMENT_FAILURE_RATE: z.coerce.number().min(0).max(1).default(0),
+  ENRICHMENT_SEED: z.coerce.number().int().default(42),
+  ENRICHMENT_TIMEOUT_MS: z.coerce.number().int().min(1).max(60_000).default(1000),
+  ENRICHMENT_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(10).default(3),
+  ENRICHMENT_CONCURRENCY: z.coerce.number().int().min(1).max(64).default(8),
+
+  // Scoring (ADR-0015, ADR-0046): ruleset file, relative to CONFIG_DIR.
+  SCORING_RULESET_FILE: z.string().min(1).default('scoring/ruleset.v1.yaml'),
 
   SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().min(1000).default(15_000),
 });
@@ -108,6 +127,15 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   ) {
     throw new ConfigError([
       'AUTH_JWT_SECRET looks like a placeholder; set a random secret in production',
+    ]);
+  }
+  if (
+    config.NODE_ENV === 'production' &&
+    config.BOOTSTRAP_ADMIN_PASSWORD !== undefined &&
+    /change-me|example|insecure|dev-only/i.test(config.BOOTSTRAP_ADMIN_PASSWORD)
+  ) {
+    throw new ConfigError([
+      'BOOTSTRAP_ADMIN_PASSWORD looks like a placeholder; set a strong password in production',
     ]);
   }
   return config;

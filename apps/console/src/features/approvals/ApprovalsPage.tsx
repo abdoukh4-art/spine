@@ -34,6 +34,13 @@ export function expiryLabel(expiresAt: string, now: number): { text: string; urg
   return { text: `Expires in ${formatDuration(seconds)}`, urgent: seconds < 5 * 60 };
 }
 
+/** Pending approvals soonest-expiring first (what needs a decision now); others as received. */
+export function sortForInbox(items: readonly Approval[], status: ApprovalStatus): Approval[] {
+  const sorted = [...items];
+  if (status === 'pending') sorted.sort((a, b) => a.expiresAt.localeCompare(b.expiresAt));
+  return sorted;
+}
+
 /**
  * Optimistic approve/reject: the card disappears immediately; if the server answers 409
  * (someone else decided first, or it expired) the list is rolled back and refetched, and
@@ -209,7 +216,7 @@ function ApprovalList({ status }: { status: ApprovalStatus }) {
       >
         {(page) => (
           <ul className="sp-cards" aria-label={`${humanize(status)} approvals`}>
-            {page.items.map((approval) => (
+            {sortForInbox(page.items, status).map((approval) => (
               <ApprovalCard
                 key={approval.id}
                 approval={approval}

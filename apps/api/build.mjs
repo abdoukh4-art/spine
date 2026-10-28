@@ -8,7 +8,13 @@ const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 
 const external = Object.keys(pkg.dependencies).filter((d) => !d.startsWith('@spine/'));
 
 await build({
-  entryPoints: ['src/main.ts', 'src/worker.ts', 'src/cli/migrate.ts', 'src/cli/seed.ts'],
+  entryPoints: [
+    'src/main.ts',
+    'src/worker.ts',
+    'src/instrument.ts',
+    'src/cli/migrate.ts',
+    'src/cli/seed.ts',
+  ],
   outdir: 'dist',
   outbase: 'src',
   bundle: true,

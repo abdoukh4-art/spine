@@ -56,7 +56,7 @@ function FilterForm({
       <div className="sp-row">
         <TextInput
           label="Search"
-          hint="Title, description or indicator value"
+          hint="Part of the alert title"
           type="search"
           value={draft.q}
           maxLength={200}
