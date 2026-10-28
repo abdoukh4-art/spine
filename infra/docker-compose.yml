@@ -255,4 +255,7 @@ volumes:
 secrets:
   # CA bundle for TLS-intercepting proxies during image builds (see api.Dockerfile).
   build_ca:
-    file: ${BUILD_CA_FILE:-/dev/null}
+    # Default: an empty file in the repo (= no extra CA). /dev/null lives outside the project
+    # and compose's bake builder refuses it ("additional privileges requested"), which broke
+    # the CI e2e job.
+    file: ${BUILD_CA_FILE:-./docker/no-build-ca.pem.txt}
