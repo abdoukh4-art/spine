@@ -1,5 +1,6 @@
 import { pino, type Logger, type LoggerOptions } from 'pino';
 import type { Config } from './config.js';
+import { traceContextMixin } from './telemetry/propagation.js';
 
 export type { Logger } from 'pino';
 
@@ -31,6 +32,8 @@ export function loggerOptions(
     redact: { paths: REDACT_PATHS, censor: '[REDACTED]' },
     timestamp: pino.stdTimeFunctions.isoTime,
     formatters: { level: (label) => ({ level: label }) },
+    // Log/trace correlation (ADR-0019): traceId + spanId on every line written inside a span.
+    mixin: traceContextMixin,
   };
 }
 
