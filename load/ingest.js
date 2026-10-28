@@ -143,7 +143,7 @@ export function setup() {
   const res = http.post(
     `${BASE_URL}/api/v1/auth/login`,
     JSON.stringify({
-      email: __ENV.SPINE_EMAIL || 'analyst@spine.local',
+      email: __ENV.SPINE_EMAIL || 'admin@spine.test',
       password: __ENV.SPINE_PASSWORD || '',
     }),
     {

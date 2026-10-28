@@ -45,8 +45,8 @@ deduplication, and every request carries a unique `Idempotency-Key`.
 
 1. `make up`; set `RATE_LIMIT_MAX_PER_MINUTE` high enough (all k6 traffic comes from one
    IP) and keep the rest of `.env` at production-like values (`LOG_LEVEL=info`).
-2. Get a token (`SPINE_TOKEN`), or let the script log in as the demo analyst
-   (`SPINE_EMAIL`/`SPINE_PASSWORD`).
+2. Get a token (`SPINE_TOKEN`), or let the script log in (default: `BOOTSTRAP_ADMIN_*` from `.env`)
+   or as `SPINE_EMAIL`/`SPINE_PASSWORD` (the demo analyst once Phase 2 seeds it).
 3. Find the knee: run with `PEAK_RATE` = 50, 100, 200, 400 … (`HOLD=3m` each, with a pause
    in between so the backlog drains). The knee is the highest rate where p95 < 500 ms,
    errors < 1 % and the outbox backlog stays flat.
