@@ -18,6 +18,8 @@ import { pino } from 'pino';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   activeSpanIds,
+  getMeter,
+  getTracer,
   contextFromTraceparent,
   traceContextMixin,
   traceEventHandling,
@@ -137,6 +139,15 @@ describe('traceparent propagation (W3C Trace Context)', () => {
       spanId: '00f067aa0ba902b7',
     });
     expect(withExtractedContext(undefined, () => activeSpanIds())).toBeUndefined();
+  });
+});
+
+describe('telemetry facade without the SDK', () => {
+  it('hands out no-op instruments that are safe to use in tests', () => {
+    expect(() => getMeter().createCounter('spine_test_events').add(1)).not.toThrow();
+    const span = getTracer().startSpan('noop');
+    expect(span.isRecording()).toBe(false);
+    span.end();
   });
 });
 
