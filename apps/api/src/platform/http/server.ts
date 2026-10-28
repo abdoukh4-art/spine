@@ -88,7 +88,7 @@ export async function buildHttpServer(options: HttpServerOptions): Promise<Fasti
     },
     transform: jsonSchemaTransform,
     // Emits schemas registered with an `id` (e.g. the recursive Condition) into components.
-    transformObject: jsonSchemaTransformObject,
+    transformObject: (input) => documentProblemContentType(jsonSchemaTransformObject(input)),
   });
   if (apiDocsEnabled(config)) {
     await app.register(swaggerUi, { routePrefix: '/docs', staticCSP: true });
@@ -225,4 +225,30 @@ export async function runReadinessChecks(
   const checksResult = Object.fromEntries(entries);
   const status = entries.every(([, v]) => v === 'ok') ? 'ready' : 'not_ready';
   return { status, checks: checksResult };
+}
+
+type OpenApiDocument = ReturnType<typeof jsonSchemaTransformObject>;
+
+/**
+ * Error responses are served as `application/problem+json` (RFC 9457, ADR-0024), but the
+ * generator documents every response schema under `application/json`. Re-key 4xx/5xx
+ * responses so the published contract matches what clients actually receive; the contract
+ * test validates real error bodies against this media type.
+ */
+export function documentProblemContentType(doc: OpenApiDocument): OpenApiDocument {
+  const paths = (doc as { paths?: Record<string, Record<string, unknown>> }).paths ?? {};
+  for (const operations of Object.values(paths)) {
+    for (const operation of Object.values(operations)) {
+      const responses = (
+        operation as { responses?: Record<string, { content?: Record<string, unknown> }> }
+      ).responses;
+      for (const [status, response] of Object.entries(responses ?? {})) {
+        const json = response.content?.['application/json'];
+        if (Number(status) >= 400 && json !== undefined && response.content) {
+          response.content = { 'application/problem+json': json };
+        }
+      }
+    }
+  }
+  return doc;
 }
