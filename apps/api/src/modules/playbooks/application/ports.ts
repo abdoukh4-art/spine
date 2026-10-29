@@ -198,6 +198,8 @@ export interface RunRepository extends RunStore {
   create(run: NewRun): Promise<boolean>;
   load(runId: string): Promise<LoadedRun | null>;
   summary(runId: string): Promise<RunSummary | null>;
+  /** Who started the run manually, or null for an automatic run (four-eyes rule, ADR-0096). */
+  startedBy(runId: string): Promise<string | null>;
   list(filter: RunListFilter): Promise<Page<RunSummary>>;
   forAlert(alertId: string): Promise<RunSummary[]>;
   /** Runs a worker should be working on: not terminal and not waiting for a human. */

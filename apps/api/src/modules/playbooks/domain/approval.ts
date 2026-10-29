@@ -16,22 +16,35 @@ export interface ApprovalFacts {
 export type DecisionProblem =
   | { kind: 'already_decided'; status: ApprovalStatus }
   | { kind: 'expired' }
-  | { kind: 'insufficient_role'; required: Role };
+  | { kind: 'insufficient_role'; required: Role }
+  | { kind: 'self_approval' };
+
+/** Who wants to decide. */
+export interface DeciderFacts {
+  id: string;
+  role: Role;
+}
 
 /**
- * Checks whether `actorRole` may decide this approval at `now`.
+ * Checks whether `actor` may decide this approval at `now`.
  * Order matters: a decided approval reports "already decided" even if it has also expired.
+ *
+ * **Four eyes** (ADR-0096, security review F7): whoever started the run manually can't approve
+ * its actions. That's what keeps an AI analyst, which may *propose* runs, from also approving
+ * them. Automatic runs (`runStartedBy` null) were started by no one, so any approver may decide.
  */
 export function decisionProblem(
   approval: ApprovalFacts,
-  actorRole: Role,
+  actor: DeciderFacts,
   now: Date,
+  runStartedBy: string | null,
 ): DecisionProblem | null {
   if (approval.status !== 'pending') return { kind: 'already_decided', status: approval.status };
   if (now.getTime() >= Date.parse(approval.expiresAt)) return { kind: 'expired' };
-  if (!roleSatisfies(actorRole, approval.approverRole)) {
+  if (!roleSatisfies(actor.role, approval.approverRole)) {
     return { kind: 'insufficient_role', required: approval.approverRole };
   }
+  if (runStartedBy !== null && runStartedBy === actor.id) return { kind: 'self_approval' };
   return null;
 }
 

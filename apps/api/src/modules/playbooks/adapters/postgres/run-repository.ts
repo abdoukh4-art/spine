@@ -151,6 +151,15 @@ export class PostgresRunRepository implements RunRepository {
       .execute();
   }
 
+  async startedBy(runId: string): Promise<string | null> {
+    const row = await this.db
+      .selectFrom('playbook_runs')
+      .select('started_by')
+      .where('id', '=', runId)
+      .executeTakeFirst();
+    return row?.started_by ?? null;
+  }
+
   async summary(runId: string): Promise<RunSummary | null> {
     const row = await this.db
       .selectFrom('playbook_runs')

@@ -66,13 +66,17 @@ export class ApprovalService {
     const approval = await uow.approvals.getForUpdate(approvalId);
     if (!approval) throw new NotFoundError('Approval', approvalId);
     const now = this.deps.clock.now();
-    const problem = decisionProblem(approval, actor.role, now);
+    const startedBy = await uow.runs.startedBy(approval.runId);
+    const problem = decisionProblem(approval, actor, now, startedBy);
     if (problem?.kind === 'already_decided') {
       throw new ConflictError(`approval is already ${problem.status}`);
     }
     if (problem?.kind === 'expired') throw new ConflictError('approval has expired');
     if (problem?.kind === 'insufficient_role') {
       throw new ForbiddenError(`this approval requires role ${problem.required}`);
+    }
+    if (problem?.kind === 'self_approval') {
+      throw new ForbiddenError('four-eyes rule: the person who started this run cannot approve it');
     }
     const approved = input.decision === 'approve';
     const decided = await uow.approvals.markDecided(approvalId, {
