@@ -87,6 +87,9 @@ generator, so test the spec against behaviour.
 
 ### Unexplained: one flaky run
 
+> **Solved on 2026-10-29:** a race between the score row and its queue projection; see the
+> [hardening journal's postscript](2026-10-28-hardening.md#postscript-2026-10-29-the-flaky-test-solved).
+
 The end-to-end integration test failed once, right after a type-only edit, and then passed
 6/6 in isolation and in 3/3 full-suite runs. I don't know why, and I'm not going to pretend
 otherwise. Candidates: leftover BullMQ jobs from an earlier killed run in the shared Redis

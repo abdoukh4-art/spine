@@ -41,22 +41,23 @@ no real offensive or destructive capability anywhere (ADR-0018).
 | Integration (Testcontainers Postgres 16 + Redis 7) | **150**, including the end-to-end pipeline and OpenAPI contract tests             | 150 / 150 ✅, 3 runs in a row |
 | End-to-end (Playwright + axe, real Compose stack)  | **4** analyst journeys                                                            | 4 / 4 ✅ (also green in CI)   |
 
-### Coverage (unit tests only, `pnpm test:coverage`)
+### Coverage (`pnpm test:coverage`; API also with `test:coverage:all`)
 
-| Package / layer                 | Lines                     | Branches |
-| ------------------------------- | ------------------------- | -------- |
-| packages/playbook-engine        | **99.6 %**                | 90.1 %   |
-| packages/enrichers              | **100 %**                 | 98.4 %   |
-| packages/shared-schema          | **97.4 %**                | 89.5 %   |
-| apps/console                    | 97.8 %                    | 88.7 %   |
-| api `*/domain/` (all 7 modules) | **98.9–100 %** per module | 91–100 % |
-| apps/api overall (unit only)    | 60.1 %                    | 56.4 %   |
+| Package / layer                  | Lines                     | Branches   |
+| -------------------------------- | ------------------------- | ---------- |
+| packages/playbook-engine         | **99.6 %**                | 90.1 %     |
+| packages/enrichers               | **100 %**                 | 98.4 %     |
+| packages/shared-schema           | **97.4 %**                | 89.5 %     |
+| apps/console                     | 97.8 %                    | 88.7 %     |
+| api `*/domain/` (all 7 modules)  | **98.9–100 %** per module | 91–100 %   |
+| apps/api overall (unit only)     | 60.1 %                    | 56.4 %     |
+| **apps/api, unit + integration** | **95.6 %**                | **86.8 %** |
 
-The ≥ 85 % target for domain code and the playbook engine is met. The API's overall unit
-number is low on purpose: adapters (Postgres, BullMQ, HTTP) and the application services of
-alerts (7 %), playbooks (31 %) and auth (54 %) are exercised by the **integration** suite,
-which isn't instrumented for coverage. Merging integration coverage into the report is a
-recommended next step, so this table can show one honest overall number.
+The ≥ 85 % target for domain code and the playbook engine is met. API adapters (Postgres,
+BullMQ, HTTP) are tested against real infrastructure by the integration suite, so the API's
+meaningful number is the combined run (`pnpm --filter @spine/api test:coverage:all`): **95.6 %
+lines**. CI enforces ≥ 90 % lines / 80 % branches on it, and ≥ 85 % on domain folders from unit
+tests alone ([ADR-0091](adr/0091-combined-unit-and-integration-coverage.md)).
 
 ### Performance (k6, one 4-core host, details in [performance.md](operations/performance.md))
 
@@ -102,10 +103,6 @@ links.
 
 ## Known issues
 
-- **Intermittent `test-integration` failure in CI:** seen once on commit `02e6dc7`, green on the
-  next pushes and 3/3 local runs. CI logs aren't downloadable from the build environment, so the
-  failing test isn't confirmed; it's most likely the end-to-end flake described in the
-  [integration journal](journal/2026-10-28-integration.md). Next step: upload worker logs as a CI artifact on failure.
 - Score-sorted pagination can repeat or skip an alert that is re-scored while paging (ADR-0037).
 - Circuit-breaker state is per process: the API shows its own breakers, the worker's are
   visible only as metrics.
@@ -115,9 +112,8 @@ links.
 ## Recommended next steps
 
 1. Separate migration and runtime database roles (F4) with an ADR and Compose support.
-2. Merge integration-test coverage into the coverage report; capture worker logs in CI to diagnose the flake.
-3. Run the load-test knee sweep, the 30-minute soak, and a multi-host run.
-4. `LISTEN/NOTIFY` outbox wake-ups and slimmer queue payloads (ADR-0090 "revisit").
-5. Retention jobs for `domain_events` and the enrichment inbox.
-6. Async batch imports (F6), four-eyes approvals (F7), parallel playbook branches.
-7. OIDC SSO, more source normalizers (OCSF export), more step types (tutorial 03's `isolate_host`).
+2. Run the load-test knee sweep, the 30-minute soak, and a multi-host run.
+3. `LISTEN/NOTIFY` outbox wake-ups and slimmer queue payloads (ADR-0090 "revisit").
+4. Retention jobs for `domain_events` and the enrichment inbox.
+5. Async batch imports (F6), four-eyes approvals (F7), parallel playbook branches.
+6. OIDC SSO, more source normalizers (OCSF export), more step types (tutorial 03's `isolate_host`).
