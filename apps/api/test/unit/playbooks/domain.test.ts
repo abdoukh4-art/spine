@@ -105,23 +105,41 @@ describe('approval rules', () => {
     expiresAt: '2026-10-28T11:00:00.000Z',
   };
   const now = new Date('2026-10-28T10:00:00.000Z');
+  const analyst = { id: 'u-analyst', role: 'analyst' as const };
+  const admin = { id: 'u-admin', role: 'admin' as const };
 
   it('allows a pending, unexpired approval for a sufficient role', () => {
-    expect(decisionProblem(pending, 'analyst', now)).toBeNull();
-    expect(decisionProblem(pending, 'admin', now)).toBeNull();
+    expect(decisionProblem(pending, analyst, now, null)).toBeNull();
+    expect(decisionProblem(pending, admin, now, null)).toBeNull();
+  });
+
+  it('enforces four eyes: whoever started the run cannot approve it (ADR-0096, F7)', () => {
+    expect(decisionProblem(pending, analyst, now, 'u-analyst')).toEqual({ kind: 'self_approval' });
+    // Even an admin can't approve a run they started themselves.
+    expect(decisionProblem(pending, admin, now, 'u-admin')).toEqual({ kind: 'self_approval' });
+    // A different person may; automatic runs (no starter) may be approved by anyone eligible.
+    expect(decisionProblem(pending, admin, now, 'u-analyst')).toBeNull();
+    expect(decisionProblem(pending, analyst, now, null)).toBeNull();
+  });
+
+  it('reports the state problems before four eyes (a decided approval stays "already decided")', () => {
+    expect(decisionProblem({ ...pending, status: 'rejected' }, analyst, now, 'u-analyst')).toEqual({
+      kind: 'already_decided',
+      status: 'rejected',
+    });
   });
 
   it('reports already decided before expired, then expiry, then role', () => {
     expect(
-      decisionProblem({ ...pending, status: 'approved' }, 'admin', new Date('2027-01-01')),
+      decisionProblem({ ...pending, status: 'approved' }, admin, new Date('2027-01-01'), null),
     ).toEqual({
       kind: 'already_decided',
       status: 'approved',
     });
-    expect(decisionProblem(pending, 'analyst', new Date('2026-10-28T11:00:00.000Z'))).toEqual({
+    expect(decisionProblem(pending, analyst, new Date('2026-10-28T11:00:00.000Z'), null)).toEqual({
       kind: 'expired',
     });
-    expect(decisionProblem({ ...pending, approverRole: 'admin' }, 'analyst', now)).toEqual({
+    expect(decisionProblem({ ...pending, approverRole: 'admin' }, analyst, now, null)).toEqual({
       kind: 'insufficient_role',
       required: 'admin',
     });

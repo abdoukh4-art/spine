@@ -23,6 +23,7 @@ export default tseslint.config(
       'scripts/**',
       'apps/*/build.mjs',
       'e2e/*.mjs',
+      'apps/*/scripts/*.mjs',
       'load/**',
     ],
   },

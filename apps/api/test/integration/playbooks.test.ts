@@ -178,6 +178,26 @@ describe('approval gates', () => {
     ).rejects.toThrow(/already approved/);
   });
 
+  it('four eyes: whoever started a run cannot approve it; someone else can (ADR-0096, F7)', async () => {
+    // E.g. an AI analyst proposes a containment run through MCP: it may start it, never approve it.
+    const proposer = { id: '0190f0a0-0000-7000-8000-00000000000b', role: 'analyst' as const };
+    const reviewer = { id: '0190f0a0-0000-7000-8000-00000000000c', role: 'analyst' as const };
+    const snapshot = h.alert({ category: 'malware', score: 92 });
+    const runId = await startManual('malware-containment', snapshot.alert.id);
+    const result = await h.run(runId);
+    if (result.outcome.kind !== 'waiting_approval') throw new Error(JSON.stringify(result.outcome));
+    const { approvalId } = result.outcome;
+
+    await expect(
+      h.pb.approvals.decide(approvalId, { decision: 'approve' }, proposer),
+    ).rejects.toThrow(/four-eyes/);
+    expect((await h.pb.store.approvals.get(approvalId))?.status).toBe('pending');
+    expect(h.audits.some((a) => a.targetId === approvalId)).toBe(false);
+
+    const approved = await h.pb.approvals.decide(approvalId, { decision: 'approve' }, reviewer);
+    expect(approved).toMatchObject({ status: 'approved', decidedBy: reviewer.id });
+  });
+
   it('a decision and its audit entry commit together: if auditing fails, nothing is decided', async () => {
     const { runId, approvalId } = await waitingMalwareRun();
     const analyst = { id: '0190f0a0-0000-7000-8000-00000000000b', role: 'analyst' as const };

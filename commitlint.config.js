@@ -32,6 +32,7 @@ export default {
         'deps',
         'security',
         'e2e',
+        'mcp',
         'demo',
         'release',
       ],
