@@ -15,3 +15,4 @@ a mentor would explain their own week: mistakes included, because that's where t
 | 2026-10-28 | [Console: building a UI against an API that doesn't exist yet](2026-10-28-console.md)               |
 | 2026-10-28 | [Integration: when parallel work meets reality](2026-10-28-integration.md)                          |
 | 2026-10-28 | [Hardening: attack it, load it, and check the README](2026-10-28-hardening.md)                      |
+| 2026-10-29 | [Closing the gaps, and finding out a "pass" was wrong](2026-10-29-closing-the-gaps.md)              |

@@ -5,6 +5,7 @@
 #   ./scripts/load-test.sh                         # login with .env's BOOTSTRAP_ADMIN_*
 #   SPINE_TOKEN=<access token> ./scripts/load-test.sh
 #   PEAK_RATE=300 HOLD=5m ./scripts/load-test.sh   # heavier run
+#   MODE=webhook HOLD=30m PEAK_RATE=30 ./scripts/load-test.sh   # soak, signed like a sensor
 #   ./scripts/load-test.sh --inspect               # validate the script only, no traffic
 #
 # Environment: BASE_URL (default http://localhost:8080, i.e. through nginx), PEAK_RATE,
@@ -31,14 +32,26 @@ env_value() { [[ -f "$root/.env" ]] && grep -E "^$1=" "$root/.env" | tail -1 | c
 email="${SPINE_EMAIL:-$(env_value BOOTSTRAP_ADMIN_EMAIL)}"
 password="${SPINE_PASSWORD:-$(env_value BOOTSTRAP_ADMIN_PASSWORD)}"
 
+# MODE=webhook (soaks): sign as a sensor with WEBHOOK_SOURCE's secret from .env (no session to expire).
+mode="${MODE:-api}"
+source_id="${WEBHOOK_SOURCE:-edr}"
+webhook_secret="${WEBHOOK_SECRET:-}"
+if [[ "$mode" == "webhook" && -z "$webhook_secret" ]]; then
+  webhook_secret="$(env_value WEBHOOK_SOURCES_JSON | node -e \
+    'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s||"{}");process.stdout.write(j[process.argv[1]]?.secret??"")})' \
+    "$source_id")"
+fi
+
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 # --network host: the stack publishes its ports on the host's loopback interface.
-docker run --rm --network host \
+# --user: k6 writes the summary into load/results, which belongs to the caller.
+docker run --rm --network host --user "$(id -u):$(id -g)" \
   -v "$root/load:/load:ro" -v "$results:/results" \
   -e BASE_URL="${BASE_URL:-http://localhost:8080}" \
   -e PEAK_RATE="${PEAK_RATE:-100}" -e RAMP="${RAMP:-1m}" -e HOLD="${HOLD:-3m}" \
   -e DUPLICATE_RATIO="${DUPLICATE_RATIO:-0.1}" \
   -e SPINE_TOKEN="${SPINE_TOKEN:-}" \
+  -e MODE="$mode" -e WEBHOOK_SOURCE="$source_id" -e WEBHOOK_SECRET="$webhook_secret" \
   -e SPINE_EMAIL="$email" -e SPINE_PASSWORD="$password" \
   "$image" run --summary-export "/results/ingest-$stamp.json" /load/ingest.js
 
