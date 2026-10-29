@@ -85,4 +85,5 @@ in the same PR. CI checks that every ADR file appears in this index.
 | [0084](0084-slos-and-burn-rate-alerting.md)                       | SLOs with multi-window, multi-burn-rate alerting                                             | accepted | ops                    |
 | [0085](0085-image-scanning-and-sbom-in-ci.md)                     | Scan container images with Trivy and publish image SBOMs in CI                               | accepted | security, process      |
 | [0090](0090-load-test-fixes-retention-fail-open-poll-interval.md) | Bounded job retention, fail-open rate limiting, 50 ms outbox poll (from the first load test) | accepted | ops, architecture      |
+| [0092](0092-separate-migration-and-runtime-database-roles.md)     | Separate migration (owner) and runtime database roles                                        | accepted | security, ops          |
 | [0091](0091-combined-unit-and-integration-coverage.md)            | Measure API coverage over unit + integration tests, and enforce it                           | accepted | testing, ci            |

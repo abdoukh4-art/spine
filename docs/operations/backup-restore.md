@@ -44,9 +44,16 @@ dc() { docker compose -f infra/docker-compose.yml --env-file .env "$@"; }
 dc exec -T postgres pg_restore --list < spine.dump | head           # archive readable?
 dc exec -T postgres psql -U spine -d postgres -c 'CREATE DATABASE spine_restored;'
 dc exec -T postgres pg_restore -U spine -d spine_restored --no-owner --exit-on-error < spine.dump
+dc exec -T postgres psql -U spine -d postgres -c 'GRANT CONNECT ON DATABASE spine_restored TO spine_app;'
 # Check, then point DATABASE_URL / POSTGRES_DB at spine_restored (or rename databases
 # while the app is stopped) and `make up`.
 ```
+
+**Roles aren't in the dump.** `pg_dump` saves the table GRANTs to `spine_runtime` (ADR-0092), but
+roles are cluster-wide and aren't included. Restoring into the same cluster just works (tested on
+2026-10-29: the runtime role reads the restored data and still can't update `audit_log`). On a
+**new** cluster, run `CREATE ROLE spine_runtime NOLOGIN;` before `pg_restore` (otherwise
+`--exit-on-error` stops at the first GRANT), then run the migrate step to recreate the login role.
 
 After a restore, Redis may hold jobs for state that no longer exists, or miss jobs for
 state that does: flush the queues and let the system rebuild them (worker restart →

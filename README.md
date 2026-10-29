@@ -139,7 +139,7 @@ docs/                     The learning hub
 v0.1 is complete for its scope. What's done, stubbed and known-broken is listed honestly in
 [docs/STATUS.md](docs/STATUS.md). Next steps:
 
-- separate migration/runtime database roles (security review F4), async batch imports, four-eyes approvals;
+- async batch imports and four-eyes approvals (security review F6, F7);
 - `LISTEN/NOTIFY` outbox wake-ups and slimmer queue payloads ([ADR-0090](docs/adr/0090-load-test-fixes-retention-fail-open-poll-interval.md)), a load-test soak and a multi-host run;
 - parallel playbook branches, a visual playbook editor on top of the DSL, OIDC SSO;
 - more source normalizers (OCSF export), more step types (tutorial 03's `isolate_host`).

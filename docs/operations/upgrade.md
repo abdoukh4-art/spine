@@ -15,8 +15,9 @@ means when the database schema has changed.
 
 ## Migrations are forward-only
 
-`apps/api/migrations/*.sql` are applied in filename order by the API at start
-(`MIGRATE_ON_START=true`) and recorded with a SHA-256 checksum in `schema_migrations`
+`apps/api/migrations/*.sql` are applied in filename order by the migrate step (`dist/cli/migrate.js`:
+the `migrate` Compose service or the `spine-migrate` systemd unit, as the table owner, ADR-0092;
+or by the API at start with `MIGRATE_ON_START=true` in a single-role development setup) and recorded with a SHA-256 checksum in `schema_migrations`
 (ADR-0006). The migrator refuses to start if an applied file was edited. There are **no
 down migrations**: a "down" script is code that is never tested until the worst possible
 moment, and it can't bring back data that an "up" deleted.

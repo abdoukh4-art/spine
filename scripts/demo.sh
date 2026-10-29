@@ -39,7 +39,7 @@ node scripts/demo-story.mjs --base-url "$base" "$@"
 cat <<EOF
 
   Console      $base            (TLS: https://localhost:8443, self-signed)
-               sign in as analyst@spine.test / \${SPINE_DEMO_ANALYST_PASSWORD:-night-owl-demo-dana-2026}
+               sign in as analyst@spine.test / ${SPINE_DEMO_ANALYST_PASSWORD:-night-owl-demo-dana-2026}
                or admin from BOOTSTRAP_ADMIN_EMAIL / BOOTSTRAP_ADMIN_PASSWORD in .env
   API docs     $base/docs       (non-production only)
   Grafana      http://localhost:3001  (admin / GRAFANA_ADMIN_PASSWORD from .env)

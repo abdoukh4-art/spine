@@ -1,6 +1,6 @@
 import { createApplication } from './composition.js';
 import { loadConfig } from './platform/config.js';
-import { migrate } from './platform/db/migrator.js';
+import { checkRuntimeRole, runMigrations } from './platform/db/prepare.js';
 import { installGracefulShutdown } from './platform/lifecycle.js';
 import { createLogger } from './platform/logger.js';
 import { createRedis } from './platform/queue/bullmq.js';
@@ -19,10 +19,8 @@ async function main(): Promise<void> {
     traceparent: () => telemetry.traceparent(),
   });
 
-  if (config.MIGRATE_ON_START) {
-    const result = await migrate(app.deps.db, config.MIGRATIONS_DIR);
-    logger.info({ applied: result.applied }, 'migrations complete');
-  }
+  if (config.MIGRATE_ON_START) await runMigrations(config, logger);
+  await checkRuntimeRole(app.deps.db, config, logger);
   for (const module of app.modules) await module.startup?.();
 
   let shuttingDown = false;

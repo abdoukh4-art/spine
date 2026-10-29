@@ -1,6 +1,7 @@
 import { Queue, type Worker } from 'bullmq';
 import { createApplication } from './composition.js';
 import { loadConfig } from './platform/config.js';
+import { checkRuntimeRole } from './platform/db/prepare.js';
 import { OutboxRelay, outboxBacklog } from './platform/events/outbox.js';
 import { installGracefulShutdown, type Closer } from './platform/lifecycle.js';
 import { createLogger } from './platform/logger.js';
@@ -30,6 +31,7 @@ async function main(): Promise<void> {
     redis,
     traceparent: () => telemetry.traceparent(),
   });
+  await checkRuntimeRole(app.deps.db, config, logger);
 
   const deliveryQueue = new BullMqDeliveryQueue(redis);
   const relay = new OutboxRelay(app.deps.db, app.subscriptions, deliveryQueue, logger, {
