@@ -104,7 +104,20 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '${{ env.NODE_VERSION }}', cache: pnpm }
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test:integration
+      # Unit + integration in one run, so the API's coverage counts adapters exercised only by
+      # integration tests. Thresholds live in the script (ADR-0091).
+      - run: pnpm --filter @spine/api test:coverage:all
+      - name: Coverage summary
+        if: always()
+        run: |
+          echo '### API coverage (unit + integration)' >> "$GITHUB_STEP_SUMMARY"
+          node -e "const t=require('./apps/api/coverage/all/coverage-summary.json').total; for (const k of ['lines','branches','statements','functions']) console.log('- '+k+': '+t[k].pct+' %')" >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-coverage
+          path: apps/api/coverage/all
+          retention-days: 14
 
   contract:
     name: contract

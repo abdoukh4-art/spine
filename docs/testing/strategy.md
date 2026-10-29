@@ -34,7 +34,9 @@ against one server, and a failed run leaves no shared state behind.
   prints the failing seed on failure. Re-run it with `fc.assert(prop, { seed, path })`.
 - Fixtures live next to the code that owns them (`fixtures/` folders) and are realistic but synthetic.
 - Coverage gates: ≥ 85 % on `packages/playbook-engine`, `packages/enrichers`,
-  `packages/shared-schema` and `apps/api/src/modules/*/domain`.
+  `packages/shared-schema` and `apps/api/src/modules/*/domain` (unit tests alone); ≥ 90 % lines and
+  ≥ 80 % branches for the whole API measured over unit + integration tests
+  (`pnpm --filter @spine/api test:coverage:all`, [ADR-0091](../adr/0091-combined-unit-and-integration-coverage.md)).
 
 ## What we deliberately don't test
 

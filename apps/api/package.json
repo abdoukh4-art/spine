@@ -15,6 +15,7 @@
     "test": "vitest run --project unit",
     "test:coverage": "vitest run --project unit --coverage",
     "test:integration": "vitest run --project integration",
+    "test:coverage:all": "vitest run --coverage --coverage.reportsDirectory=coverage/all --coverage.thresholds.lines=90 --coverage.thresholds.branches=80 --coverage.thresholds.statements=90",
     "migrate": "tsx --env-file-if-exists=../../.env src/cli/migrate.ts",
     "seed": "tsx --env-file-if-exists=../../.env src/cli/seed.ts",
     "openapi:generate": "tsx src/cli/openapi.ts ../../docs/architecture/openapi.json"
