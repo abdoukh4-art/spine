@@ -3,7 +3,7 @@ import type { Logger } from '../../../platform/logger.js';
 import type { BackgroundTask } from '../../../platform/module.js';
 import type { Clock } from '../../../platform/runtime.js';
 import type { MetricsReadModel } from '../application/get-metrics-summary.js';
-import { computeMttd, computeMttr, computePlaybookStats } from '../domain/soc-metrics.js';
+import { playbookStatsFrom } from '../domain/soc-metrics.js';
 
 const ROLLING_WINDOW_MS = 24 * 3_600_000;
 const REFRESH_MS = 30_000;
@@ -33,17 +33,14 @@ export function createSocGaugesTask(
       const to = clock.now();
       const window = { from: new Date(to.getTime() - ROLLING_WINDOW_MS), to };
       const [alerts, runs] = await Promise.all([
-        readModel.alertsReceivedBetween(window),
-        readModel.runsBetween(window),
+        readModel.alertStats(window),
+        readModel.runStats(window),
       ]);
-      const mttd = computeMttd(alerts);
-      const mttr = computeMttr(alerts);
-      const playbooks = computePlaybookStats(runs);
       latest = {
-        mttd: mttd.meanSeconds ?? NaN,
-        mttr: mttr.meanSeconds ?? NaN,
-        successRate: playbooks.successRate ?? NaN,
-        open: mttr.openCount,
+        mttd: alerts.mttd.meanSeconds ?? NaN,
+        mttr: alerts.mttr.meanSeconds ?? NaN,
+        successRate: playbookStatsFrom(runs).successRate ?? NaN,
+        open: alerts.mttr.openCount,
       };
     } catch (err) {
       logger.warn({ err }, 'failed to refresh SOC gauges');

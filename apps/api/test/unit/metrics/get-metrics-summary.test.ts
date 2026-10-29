@@ -6,6 +6,7 @@ import {
   resolveWindow,
   type MetricsReadModel,
 } from '../../../src/modules/metrics/application/get-metrics-summary.js';
+import { aggregateAlerts, aggregateRuns } from '../../../src/modules/metrics/domain/soc-metrics.js';
 import { ValidationError } from '../../../src/platform/errors.js';
 import { RecordingEventPublisher } from '../../../src/platform/events/in-memory.js';
 import { buildHttpServer } from '../../../src/platform/http/server.js';
@@ -16,16 +17,18 @@ import { testConfig } from '../../support/config.js';
 
 const clock = new ManualClock('2026-10-28T12:00:00Z');
 const readModel: MetricsReadModel = {
-  alertsReceivedBetween: () =>
-    Promise.resolve([
-      {
-        occurredAt: new Date('2026-10-28T10:00:00Z'),
-        receivedAt: new Date('2026-10-28T10:02:00Z'),
-        resolvedAt: null,
-        severity: 'high',
-      },
-    ]),
-  runsBetween: () => Promise.resolve([]),
+  alertStats: () =>
+    Promise.resolve(
+      aggregateAlerts([
+        {
+          occurredAt: new Date('2026-10-28T10:00:00Z'),
+          receivedAt: new Date('2026-10-28T10:02:00Z'),
+          resolvedAt: null,
+          severity: 'high',
+        },
+      ]),
+    ),
+  runStats: () => Promise.resolve(aggregateRuns([])),
 };
 
 describe('resolveWindow', () => {

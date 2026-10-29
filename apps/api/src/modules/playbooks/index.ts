@@ -1,5 +1,5 @@
 export type { PlaybooksGateways } from './application/ports.js';
-import { runTimesBetween } from './adapters/postgres/reporting-queries.js';
+import { runStatsBetween } from './adapters/postgres/reporting-queries.js';
 import path from 'node:path';
 import type { BackgroundTask, PlatformDeps, SpineModule } from '../../platform/module.js';
 import { ApprovalService } from './application/approvals.js';
@@ -94,7 +94,7 @@ export function createPlaybooksModule(
   });
   const api: PlaybooksPublicApi = {
     runsForAlert: (alertId) => runs.forAlert(alertId),
-    runTimesBetween: (from, to) => runTimesBetween(deps.db, from, to),
+    runStatsBetween: (from, to) => runStatsBetween(deps.db, from, to),
   };
 
   const module: SpineModule = {

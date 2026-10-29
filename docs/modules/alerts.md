@@ -53,14 +53,14 @@ select the whole `canonical` (it can hold 64 KiB of raw payload), only `canonica
 
 `AlertsPublicApi` (`public-api.ts`):
 
-| Method                                    | Used by                           | Notes                                                                                                        |
-| ----------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `get(alertId)`                            | playbooks, enrichment, …          | Full `Alert` snapshot or null                                                                                |
-| `setStatus(alertId, to, actorId \| null)` | playbooks (`set_status`)          | Validated; same status = no-op; `409` on illegal transition; emits `alert.status_changed`                    |
-| `findOpenByFingerprint(trx, fingerprint)` | ingestion                         | Locks the open alert's row (`FOR UPDATE`) until the caller's transaction ends                                |
-| `recordDuplicate(trx, alertId, seenAt)`   | ingestion                         | `duplicate_count + 1`, `last_seen_at = greatest(old, seenAt)`                                                |
-| `create(trx, alert)`                      | ingestion                         | Throws `OpenAlertExistsError` (exported) when the open-fingerprint index rejects the insert                  |
-| `timesReceivedBetween(from, to)`          | metrics (read model), demo seeder | Lifecycle timestamps of alerts received in `[from, to)`; `resolvedAt` only while closed (ADR-0026, ADR-0036) |
+| Method                                    | Used by                  | Notes                                                                                                               |
+| ----------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `get(alertId)`                            | playbooks, enrichment, … | Full `Alert` snapshot or null                                                                                       |
+| `setStatus(alertId, to, actorId \| null)` | playbooks (`set_status`) | Validated; same status = no-op; `409` on illegal transition; emits `alert.status_changed`                           |
+| `findOpenByFingerprint(trx, fingerprint)` | ingestion                | Locks the open alert's row (`FOR UPDATE`) until the caller's transaction ends                                       |
+| `recordDuplicate(trx, alertId, seenAt)`   | ingestion                | `duplicate_count + 1`, `last_seen_at = greatest(old, seenAt)`                                                       |
+| `create(trx, alert)`                      | ingestion                | Throws `OpenAlertExistsError` (exported) when the open-fingerprint index rejects the insert                         |
+| `statsReceivedBetween(from, to)`          | metrics (read model)     | MTTD/MTTR/volume aggregates of alerts received in `[from, to)`, computed in Postgres (ADR-0026, ADR-0036, ADR-0095) |
 
 HTTP (base `/api/v1`):
 
