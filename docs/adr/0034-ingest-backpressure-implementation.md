@@ -5,6 +5,10 @@
 - **Deciders:** ingestion workstream
 - **Tags:** architecture, ops
 
+> **Refined by [ADR-0093](0093-backpressure-counts-the-whole-pipeline.md) (2026-10-29):** the probe now
+> counts the outbox **and** the deliveries waiting in the BullMQ event queue. Counting only the
+> outbox missed the real buffer under overload.
+
 ## Context and problem statement
 
 [ADR-0024](0024-api-conventions.md) decides _that_ ingestion sheds load with `503` +

@@ -20,12 +20,13 @@ General first steps for any incident:
 
 **Alerts:** `SpineOutboxBacklogGrowing`, `SpineIngestBackpressure`, `SpineTimeToScoreBudgetBurn`.
 
-**Symptoms:** `spine_outbox_backlog` rises steadily; ingestion starts answering `503`
-once it passes `INGEST_MAX_BACKLOG`; alerts appear in the console but are not enriched
+**Symptoms:** `spine_outbox_backlog` or `spine_queue_depth{queue="spine-events",state="waiting"}`
+rises steadily; ingestion starts answering `503` once their sum passes `INGEST_MAX_BACKLOG`
+([ADR-0093](../adr/0093-backpressure-counts-the-whole-pipeline.md)); alerts appear in the console but are not enriched
 or scored.
 
 **Impact:** detection latency grows (MTTD unaffected, time-to-score and MTTR worsen).
-No data is lost: events wait in Postgres.
+No data is lost: events wait in Postgres (outbox) or in Redis (queue).
 
 **Diagnose**
 

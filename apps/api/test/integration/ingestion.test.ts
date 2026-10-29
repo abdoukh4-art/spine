@@ -14,9 +14,10 @@ import { PostgresIdempotencyStore } from '../../src/modules/ingestion/adapters/p
 import { UnauthenticatedError } from '../../src/platform/errors.js';
 import type { Authenticator } from '../../src/platform/http/access.js';
 import { buildHttpServer, runReadinessChecks } from '../../src/platform/http/server.js';
+import { createRedis, eventQueueCounter } from '../../src/platform/queue/bullmq.js';
 import { ManualClock } from '../../src/platform/runtime.js';
 import { testConfig } from '../support/config.js';
-import { createTestDatabase, type TestDatabase } from '../support/db.js';
+import { createTestDatabase, testRedisUrl, type TestDatabase } from '../support/db.js';
 
 const SURICATA_SECRET = 'test-only-webhook-secret-suricata-000000001';
 const CEF_SECRET = 'test-only-webhook-secret-cef-0000000000000001';
@@ -508,5 +509,44 @@ describe('back-pressure', () => {
     }
     const ready = await runReadinessChecks(application.readinessChecks);
     expect(ready.checks['ingest-backlog']).toBe('ok');
+  });
+
+  it('also counts deliveries waiting in the queue, not only the outbox (ADR-0093)', async () => {
+    // The 400/s load test: the relay drains the outbox at once, so the backlog lives in Redis.
+    await t.db.updateTable('domain_events').set({ dispatched_at: new Date() }).execute();
+    const redis = createRedis(`${testRedisUrl()}/12`);
+    const queue = eventQueueCounter(redis);
+    await redis.flushdb();
+    await queue.addBulk(
+      ['a', 'b', 'c'].map((id) => ({ name: 'delivery', data: { id }, opts: { jobId: id } })),
+    );
+    const app = createApplication(testConfig({ INGEST_MAX_BACKLOG: '2' }), {
+      db: t.db,
+      redis,
+      clock,
+    });
+    const http = await buildHttpServer({
+      config: testConfig({ INGEST_MAX_BACKLOG: '2' }),
+      modules: app.modules,
+      authenticator,
+      redis: null,
+      logger: false,
+      readiness: () => runReadinessChecks(app.readinessChecks),
+    });
+    try {
+      const res = await http.inject({
+        method: 'POST',
+        url: '/api/v1/alerts',
+        payload: alertBody(),
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(503);
+      expect((await runReadinessChecks(app.readinessChecks)).checks['ingest-backlog']).toBe('fail');
+    } finally {
+      await http.close();
+      await queue.obliterate({ force: true });
+      await queue.close();
+      await redis.quit();
+    }
   });
 });

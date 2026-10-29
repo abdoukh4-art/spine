@@ -46,6 +46,11 @@ limit_req_zone $binary_remote_addr zone=spine_login:10m rate=10r/m;
 limit_req_zone $binary_remote_addr zone=spine_webhooks:10m rate=50r/s;
 limit_req_status 429;
 limit_conn_zone $binary_remote_addr zone=spine_conn:10m;
+# Concurrent connections per client IP (slowloris-style exhaustion). One sensor or NAT gateway
+# can need more: raise SPINE_CONN_PER_CLIENT. Answer 429, not nginx's default 503, so a client
+# limit can't be mistaken for Spine's own back-pressure 503 (ADR-0093: that happened in a load test).
+limit_conn spine_conn ${SPINE_CONN_PER_CLIENT};
+limit_conn_status 429;
 
 # --- Upstream -------------------------------------------------------------------------------
 # `resolve` (nginx >= 1.27.3) re-resolves the name while running: when the API container

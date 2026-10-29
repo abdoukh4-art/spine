@@ -19,6 +19,14 @@ export function createRedis(url: string): Redis {
   return new Redis(url, { maxRetriesPerRequest: null, enableReadyCheck: true, lazyConnect: false });
 }
 
+/**
+ * A `Queue` handle on the event queue, for counting pending deliveries (ingest back-pressure,
+ * ADR-0093). It shares the given connection; it never adds or processes jobs.
+ */
+export function eventQueueCounter(redis: Redis): Queue {
+  return new Queue(QUEUE_NAMES.events, { connection: redis });
+}
+
 /** Readiness probe for Redis. */
 export async function pingRedis(redis: Redis): Promise<boolean> {
   try {

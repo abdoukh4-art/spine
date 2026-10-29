@@ -67,6 +67,8 @@ const ConfigSchema = z.object({
   /** Per-source (webhooks) / per-client-IP (analyst endpoints) ingestion limit (ADR-0024). */
   INGEST_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).default(6000),
   INGEST_MAX_BACKLOG: z.coerce.number().int().min(1).default(10_000),
+  /** Concurrent ingest requests per API process before answering 503 at once (ADR-0093). */
+  INGEST_MAX_IN_FLIGHT: z.coerce.number().int().min(1).max(10_000).default(16),
   WEBHOOK_SOURCES_JSON: z
     .string()
     .default('{}')

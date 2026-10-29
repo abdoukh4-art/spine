@@ -101,16 +101,16 @@ curl -X POST localhost:3000/api/v1/ingest/webhooks/suricata -H 'content-type: ap
 
 ## Failure modes
 
-| Failure                                             | Behaviour                                                                              | How it's tested                                                       |
-| --------------------------------------------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Malformed record (bad JSON, missing time, …)        | `400` with a reason (single) or a per-line error (batch, others still ingested)        | normalizer unit tests, _reports per-line errors…_                     |
-| Non-alert EVE event (`flow`, `dns`)                 | Batch: counted as `skipped`. Webhook: `400`                                            | _imports a Suricata EVE file…_, _returns 400 for…_                    |
-| Two copies of a new alert at the same instant       | Loser's INSERT hits the unique index → transaction re-run → recorded as duplicate      | _collapses 20 concurrent ingests…_                                    |
-| Client retries with the same Idempotency-Key        | Stored response replayed (`Idempotent-Replay: true`); concurrent retries serialize     | _serializes concurrent requests with one key…_                        |
-| Outbox backlog > `INGEST_MAX_BACKLOG`               | `503` + `Retry-After: 5` before body parsing; `/readyz` reports `ingest-backlog: fail` | _answers 503 + Retry-After and fails readiness…_                      |
-| Database down mid-batch                             | Request fails (500); lines already committed stay committed; resending dedups them     | `ingest-alert.test.ts` › _fails the request on infrastructure errors_ |
-| Wrong/missing webhook signature, clock skew > 5 min | `401` (reason logged, not returned)                                                    | `webhook-signature.test.ts`                                           |
-| Body > 10 MiB (batch) / > 1 MiB (others)            | `413`                                                                                  | _rejects bodies over 10 MiB with 413_                                 |
+| Failure                                                              | Behaviour                                                                              | How it's tested                                                              |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Malformed record (bad JSON, missing time, …)                         | `400` with a reason (single) or a per-line error (batch, others still ingested)        | normalizer unit tests, _reports per-line errors…_                            |
+| Non-alert EVE event (`flow`, `dns`)                                  | Batch: counted as `skipped`. Webhook: `400`                                            | _imports a Suricata EVE file…_, _returns 400 for…_                           |
+| Two copies of a new alert at the same instant                        | Loser's INSERT hits the unique index → transaction re-run → recorded as duplicate      | _collapses 20 concurrent ingests…_                                           |
+| Client retries with the same Idempotency-Key                         | Stored response replayed (`Idempotent-Replay: true`); concurrent retries serialize     | _serializes concurrent requests with one key…_                               |
+| Pipeline backlog (outbox + queued deliveries) > `INGEST_MAX_BACKLOG` | `503` + `Retry-After: 5` before body parsing; `/readyz` reports `ingest-backlog: fail` | _answers 503 + Retry-After…_, _also counts deliveries waiting in the queue…_ |
+| Database down mid-batch                                              | Request fails (500); lines already committed stay committed; resending dedups them     | `ingest-alert.test.ts` › _fails the request on infrastructure errors_        |
+| Wrong/missing webhook signature, clock skew > 5 min                  | `401` (reason logged, not returned)                                                    | `webhook-signature.test.ts`                                                  |
+| Body > 10 MiB (batch) / > 1 MiB (others)                             | `413`                                                                                  | _rejects bodies over 10 MiB with 413_                                        |
 
 ## How to extend it
 

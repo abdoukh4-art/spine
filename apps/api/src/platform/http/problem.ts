@@ -61,8 +61,20 @@ function send(reply: FastifyReply, body: Problem): FastifyReply {
   return reply.status(body.status).type('application/problem+json').send(body);
 }
 
+/**
+ * node-postgres gives up waiting for a pooled connection after `connectionTimeoutMillis`. That is
+ * saturation, not a bug: answer like back-pressure (503 + Retry-After), not 500 (ADR-0093).
+ */
+export function isPoolExhausted(error: unknown): boolean {
+  return error instanceof Error && error.message === 'timeout exceeded when trying to connect';
+}
+
 function toProblem(error: unknown, request: FastifyRequest, reply: FastifyReply): Problem {
   const id = request.id;
+  if (isPoolExhausted(error)) {
+    void reply.header('retry-after', '5');
+    return problem('overloaded', 503, 'the database is saturated; retry later', id);
+  }
   if (error instanceof AppError) {
     const status = STATUS_BY_SLUG[error.slug] ?? 400;
     if (error instanceof OverloadedError) {
@@ -96,7 +108,11 @@ function toProblem(error: unknown, request: FastifyRequest, reply: FastifyReply)
 export function registerProblemHandlers(app: FastifyInstance): void {
   app.setErrorHandler((error, request, reply) => {
     const body = toProblem(error, request, reply);
-    if (body.status >= 500) {
+    if (error instanceof OverloadedError || isPoolExhausted(error)) {
+      // Load shedding is the system working as designed, and it happens thousands of times a
+      // second under overload: log it cheaply (no stack trace) and not as an error (ADR-0093).
+      request.log.warn({ problem: body.type, status: body.status }, 'request shed');
+    } else if (body.status >= 500) {
       request.log.error({ err: error }, 'request failed');
     } else {
       request.log.info({ problem: body.type, status: body.status }, 'request rejected');

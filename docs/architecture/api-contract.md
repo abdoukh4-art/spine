@@ -62,8 +62,8 @@ Auth details (see [modules/auth.md](../modules/auth.md)):
 | POST   | `/api/v1/ingest/webhooks/:sourceId`                     | HMAC (`X-Spine-Timestamp`, `X-Spine-Signature: sha256=<hex>` over `timestamp + "." + body`, ±5 min skew) | the source's format, as sent (the HMAC covers the raw bytes): JSON for `suricata-eve`/`canonical`, one text line for `cef`; optional `Idempotency-Key` | `202 IngestResult`; `401` bad signature; `404` unknown source; `400` payload the normalizer rejects      |
 | POST   | `/api/v1/ingest/batch?format=ndjson\|cef\|suricata-eve` | A                                                                                                        | `text/plain` or `application/x-ndjson` body ≤ 10 MiB, one record per line                                                                              | `200 {accepted, deduplicated, rejected, skipped, errors:[{line, message}]}`                              |
 
-Back-pressure: all ingestion endpoints return `503` + `Retry-After: 5` when the outbox backlog
-exceeds `INGEST_MAX_BACKLOG` ([ADR-0034](../adr/0034-ingest-backpressure-implementation.md)).
+Back-pressure: all ingestion endpoints return `503` + `Retry-After: 5` when the pipeline backlog
+(undispatched outbox events + queued deliveries, [ADR-0093](../adr/0093-backpressure-counts-the-whole-pipeline.md)) exceeds `INGEST_MAX_BACKLOG` ([ADR-0034](../adr/0034-ingest-backpressure-implementation.md)).
 Idempotency-Key reuse with a different body returns `409 idempotency-key-reused`; keys are
 scoped per user or per webhook source and expire after 24 h ([ADR-0033](../adr/0033-ingest-transaction-race-and-idempotency.md)).
 

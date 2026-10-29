@@ -39,7 +39,7 @@ headers, CORS, body limits) must be uniform rather than per route.
    per IP. `/auth/login` gets 10/min per IP **and** per username. Ingestion gets a separate
    bucket of 6000/min per source. `429` with `Retry-After`.
 6. **Back-pressure on ingestion:** when the outbox backlog exceeds `INGEST_MAX_BACKLOG`
-   (default 10 000 undispatched events), ingestion endpoints return `503` with
+   (default 10 000 undispatched events; since [ADR-0093](0093-backpressure-counts-the-whole-pipeline.md), outbox + queued deliveries), ingestion endpoints return `503` with
    `Retry-After: 5` instead of accepting work the pipeline can't absorb. This is load
    shedding at the front door, and it's also reported by `/readyz`.
 7. **Security headers** (`@fastify/helmet`): strict CSP for the console (`default-src 'self'`),
