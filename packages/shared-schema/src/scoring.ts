@@ -13,6 +13,10 @@ export const ScoringRuleSchema = z.object({
 });
 export type ScoringRule = z.infer<typeof ScoringRuleSchema>;
 
+/**
+ * A versioned scoring ruleset (ADR-0015): severity baselines plus additive rules. Every stored
+ * score records the version it was computed with, so changing a rule's meaning needs a new version.
+ */
 export const RulesetSchema = z.object({
   version: z.number().int().min(1),
   description: z.string().max(500).optional(),
@@ -32,6 +36,10 @@ export const ScoreFactorSchema = z.object({
 });
 export type ScoreFactor = z.infer<typeof ScoreFactorSchema>;
 
+/**
+ * An explainable score: the clamped 0–100 `score`, the unclamped `rawScore`, the factors that
+ * produced it and any provider data gaps. Shown as-is to analysts.
+ */
 export const ScoreExplanationSchema = z.object({
   score: z.number().int().min(0).max(100),
   rawScore: z.number().int(),

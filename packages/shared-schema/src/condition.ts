@@ -17,6 +17,7 @@ export const CONDITION_OPS = [
   'exists',
   'matches',
 ] as const;
+/** Validates a {@link CONDITION_OPS} value. */
 export const ConditionOpSchema = z.enum(CONDITION_OPS);
 export type ConditionOp = z.infer<typeof ConditionOpSchema>;
 
@@ -31,6 +32,10 @@ export const FieldPathSchema = z
   .max(200)
   .regex(/^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$/, 'must be a dotted identifier path');
 
+/**
+ * A leaf predicate: compare the value at `field` with `value` using `op`. Declared by hand
+ * (not `z.infer`) because {@link Condition} is recursive.
+ */
 export interface FieldCondition {
   field: string;
   op: ConditionOp;
@@ -42,6 +47,7 @@ export type Condition =
   | { not: Condition }
   | FieldCondition;
 
+/** Validates a {@link FieldCondition}; `value` may be a scalar or a list (for `in`). */
 export const FieldConditionSchema = z
   .object({
     field: FieldPathSchema,

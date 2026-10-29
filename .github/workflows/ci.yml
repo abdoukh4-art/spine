@@ -29,6 +29,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm format:check
+      # Every public export documented (ADR-0094).
+      - run: pnpm check:tsdoc
 
   arch:
     name: arch

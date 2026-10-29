@@ -19,12 +19,14 @@ export type User = z.infer<typeof UserSchema>;
  */
 export const PasswordSchema = z.string().min(12).max(128);
 
+/** `POST /auth/login` body. The password is only length-checked here; argon2id does the rest. */
 export const LoginRequestSchema = z.object({
   email: z.email().max(254),
   password: z.string().min(1).max(128),
 });
 export type LoginRequest = z.infer<typeof LoginRequestSchema>;
 
+/** Login/refresh response: a short-lived access token (memory only) plus the signed-in user. */
 export const TokenResponseSchema = z.object({
   accessToken: z.string(),
   /** Seconds until the access token expires. */
@@ -33,6 +35,7 @@ export const TokenResponseSchema = z.object({
 });
 export type TokenResponse = z.infer<typeof TokenResponseSchema>;
 
+/** `POST /users` body (admin only). The password must satisfy {@link PasswordSchema}. */
 export const CreateUserRequestSchema = z.object({
   email: z.email().max(254),
   displayName: z.string().min(1).max(100),
@@ -41,6 +44,7 @@ export const CreateUserRequestSchema = z.object({
 });
 export type CreateUserRequest = z.infer<typeof CreateUserRequestSchema>;
 
+/** `PATCH /users/:id` body (admin only): any non-empty subset of name, role and disabled. */
 export const UpdateUserRequestSchema = z
   .object({
     displayName: z.string().min(1).max(100).optional(),
@@ -50,6 +54,10 @@ export const UpdateUserRequestSchema = z
   .refine((v) => Object.keys(v).length > 0, 'at least one field is required');
 export type UpdateUserRequest = z.infer<typeof UpdateUserRequestSchema>;
 
+/**
+ * One append-only audit log row (ADR-0064): who (`actorId`/`actorType`) did what (`action`) to
+ * which target, with the HTTP outcome and request context.
+ */
 export const AuditEntrySchema = z.object({
   id: z.string(),
   occurredAt: TimestampSchema,
@@ -66,6 +74,7 @@ export const AuditEntrySchema = z.object({
 });
 export type AuditEntry = z.infer<typeof AuditEntrySchema>;
 
+/** `GET /audit-log` filters: actor, action, time range, with cursor pagination. */
 export const AuditQuerySchema = z.object({
   actorId: IdSchema.optional(),
   action: z.string().max(100).optional(),
