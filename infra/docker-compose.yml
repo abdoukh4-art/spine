@@ -82,6 +82,25 @@ services:
       resources:
         limits: { memory: 256m }
 
+  # One-shot admin process (twelve-factor XII, ADR-0092): applies migrations as the table owner,
+  # then creates/updates the runtime login role from DATABASE_URL and exits. The API and worker
+  # start only after it succeeded, and never hold owner credentials.
+  migrate:
+    <<: *spine-app
+    pull_policy: never # same image as `api`, which builds it
+    restart: 'no'
+    command: ['dist/cli/migrate.js']
+    environment:
+      SERVICE_NAME: spine-migrate
+      DATABASE_MIGRATION_URL: postgres://${POSTGRES_USER:-spine}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-spine}
+      DATABASE_URL: postgres://${SPINE_APP_DB_USER:-spine_app}:${SPINE_APP_DB_PASSWORD:?set SPINE_APP_DB_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-spine}
+      REDIS_URL: redis://redis:6379
+      MIGRATIONS_DIR: /app/migrations
+      CONFIG_DIR: /app/config
+    deploy:
+      resources:
+        limits: { memory: 256m }
+
   api:
     <<: *spine-app
     build:
@@ -92,9 +111,15 @@ services:
         SPINE_VERSION: ${SPINE_VERSION:-0.0.0-dev}
       secrets: [build_ca]
     command: ['dist/main.js']
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
     environment:
       SERVICE_NAME: spine-api
-      DATABASE_URL: postgres://${POSTGRES_USER:-spine}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-spine}
+      # Least-privilege runtime role (ADR-0092): can't rewrite the audit log or change the schema.
+      DATABASE_URL: postgres://${SPINE_APP_DB_USER:-spine_app}:${SPINE_APP_DB_PASSWORD:?set SPINE_APP_DB_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-spine}
+      MIGRATE_ON_START: 'false' # the `migrate` service did it, as the owner
       REDIS_URL: redis://redis:6379
       HTTP_PORT: '3000'
       METRICS_PORT: '9464'
@@ -119,7 +144,7 @@ services:
     command: ['dist/worker.js']
     environment:
       SERVICE_NAME: spine-worker
-      DATABASE_URL: postgres://${POSTGRES_USER:-spine}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-spine}
+      DATABASE_URL: postgres://${SPINE_APP_DB_USER:-spine_app}:${SPINE_APP_DB_PASSWORD:?set SPINE_APP_DB_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-spine}
       REDIS_URL: redis://redis:6379
       METRICS_PORT: '9464'
       MIGRATE_ON_START: 'false'

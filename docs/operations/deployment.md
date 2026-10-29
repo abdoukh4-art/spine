@@ -33,8 +33,14 @@ make down      # stop (volumes are kept)
 
 `make up` runs `docker compose -f infra/docker-compose.yml --env-file .env up -d --build`.
 It builds `spine-api:local` and `spine-console:local`, then starts services in dependency
-order using healthchecks: Postgres and Redis → API (applies migrations) → worker, nginx and
-Prometheus → Grafana.
+order using healthchecks: Postgres and Redis → `migrate` (one-shot: migrations as the owner,
+then the runtime role) → API → worker, nginx and Prometheus → Grafana.
+
+**Two database roles (ADR-0092).** `POSTGRES_USER` owns the schema and is used only by the
+`migrate` service. The API and worker connect as `SPINE_APP_DB_USER` (`spine_app`), a member of
+`spine_runtime`: it can read and write application tables, can only _append_ to `audit_log`,
+and can't change the schema or disable triggers. Both processes check this at startup, and in
+production they refuse to run as a role that could rewrite the audit log.
 
 | URL                    | What                                         |
 | ---------------------- | -------------------------------------------- |
@@ -135,10 +141,15 @@ sudo useradd --system --no-create-home --shell /usr/sbin/nologin spine
 sudo install -d -m 0750 -o root -g spine /etc/spine
 sudo install -m 0640 -o root -g spine .env.production /etc/spine/spine.env
 
-# 3. Units
-sudo cp infra/systemd/spine-api.service infra/systemd/spine-worker.service /etc/systemd/system/
+# 3. Owner credentials for migrations only (ADR-0092): root-readable, never seen by the API/worker.
+#    spine.env's DATABASE_URL uses the runtime login (e.g. spine_app), which migrate creates.
+echo 'DATABASE_MIGRATION_URL=postgres://spine_owner:…@db:5432/spine' | sudo install -m 0600 -o root -g root /dev/stdin /etc/spine/migrate.env
+
+# 4. Units: spine-migrate (one-shot) runs before spine-api and spine-worker (Requires=)
+sudo cp infra/systemd/spine-migrate.service infra/systemd/spine-api.service infra/systemd/spine-worker.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now spine-api spine-worker
+sudo systemctl enable --now spine-api spine-worker   # starts spine-migrate first
+# On upgrade: sudo systemctl restart spine-migrate spine-api spine-worker
 systemd-analyze security spine-api.service    # expect "1.3 OK"
 ```
 
@@ -157,43 +168,45 @@ Every variable is validated at start-up by `apps/api/src/platform/config.ts`; in
 configuration stops the process with a list of problems (twelve-factor III). Generated
 from `config.ts` on 2026-10-28 (re-check it when you add a variable).
 
-| Variable                              | Default                 | Notes                                                                                  |
-| ------------------------------------- | ----------------------- | -------------------------------------------------------------------------------------- |
-| `NODE_ENV`                            | `development`           | `development` \| `test` \| `production`. Production refuses placeholder secrets        |
-| `LOG_LEVEL`                           | `info`                  | pino level (`fatal` … `trace`, `silent`)                                               |
-| `SERVICE_NAME`                        | `spine-api`             | Log `service` field and `service.name` resource; worker defaults to `spine-worker`     |
-| `HTTP_HOST`                           | `0.0.0.0`               | API bind address                                                                       |
-| `HTTP_PORT`                           | `3000`                  | API port                                                                               |
-| `TRUST_PROXY`                         | `false`                 | `true` only behind nginx (see Client IPs)                                              |
-| `CORS_ALLOWED_ORIGINS`                | `http://localhost:5173` | Comma-separated origins allowed with credentials                                       |
-| `RATE_LIMIT_MAX_PER_MINUTE`           | `600`                   | Per-client API limit (Redis-backed); raise for load tests                              |
-| `ENABLE_API_DOCS`                     | non-production only     | Swagger UI at `/docs`                                                                  |
-| `DATABASE_URL`                        | **required**            | `postgres://user:pass@host:5432/db` (Compose builds it from `POSTGRES_*`)              |
-| `DATABASE_POOL_MAX`                   | `10`                    | pg pool size per process                                                               |
-| `MIGRATE_ON_START`                    | `true`                  | API applies pending migrations at start (the worker never does)                        |
-| `MIGRATIONS_DIR`                      | `migrations`            | `/app/migrations` in the image                                                         |
-| `REDIS_URL`                           | **required**            | `redis://host:6379`                                                                    |
-| `AUTH_JWT_SECRET`                     | **required**            | ≥ 32 random characters (`openssl rand -base64 48`)                                     |
-| `AUTH_ACCESS_TTL_SECONDS`             | `900`                   | 60–3600                                                                                |
-| `AUTH_REFRESH_TTL_SECONDS`            | `604800`                | ≥ 3600                                                                                 |
-| `COOKIE_SECURE`                       | `true`                  | `false` only for plain-HTTP local use                                                  |
-| `AUTH_LOGIN_MAX_PER_MINUTE`           | `10`                    | Per-IP + email login attempts per minute, in the API (nginx adds its own per-IP limit) |
-| `AUTH_USER_CACHE_TTL_SECONDS`         | `30`                    | 0–30; how long a disabled user or role change may take to apply                        |
-| `BOOTSTRAP_ADMIN_EMAIL`               | unset                   | First-run admin, created only when no user exists (ADR-0066)                           |
-| `BOOTSTRAP_ADMIN_PASSWORD`            | unset                   | ≥ 12 characters; production refuses placeholders                                       |
-| `INGEST_MAX_BACKLOG`                  | `10000`                 | Outbox backlog above which ingestion answers 503 (back-pressure)                       |
-| `WEBHOOK_SOURCES_JSON`                | `{}`                    | `{"<id>": {"normalizer": "…", "secret": "≥32 chars"}}`                                 |
-| `OUTBOX_POLL_INTERVAL_MS`             | `50`                    | Relay poll interval when idle                                                          |
-| `OUTBOX_BATCH_SIZE`                   | `100`                   | Events per relay transaction                                                           |
-| `EVENT_WORKER_CONCURRENCY`            | `8`                     | Parallel event deliveries per worker                                                   |
-| `PLAYBOOK_WORKER_CONCURRENCY`         | `4`                     | Parallel playbook steps per worker                                                     |
-| `PLAYBOOK_APPROVAL_SWEEP_INTERVAL_MS` | `30000`                 | How often expired approvals are swept                                                  |
-| `METRICS_PORT`                        | `9464`                  | Prometheus endpoint; `0` disables it                                                   |
-| `OTEL_EXPORTER_OTLP_ENDPOINT`         | unset                   | e.g. `http://jaeger:4318`; traces are exported only when set                           |
-| `CONFIG_DIR`                          | `config`                | Rulesets and playbooks; `/app/config` in the image                                     |
-| `SIMULATION_LATENCY_MS`               | `50`                    | Simulated response-action latency (ADR-0018)                                           |
-| `SIMULATION_FAILURE_RATE`             | `0`                     | 0–1, injected failures for demos and chaos tests                                       |
-| `SHUTDOWN_TIMEOUT_MS`                 | `15000`                 | Graceful shutdown budget; keep the orchestrator's stop timeout above it                |
+| Variable                              | Default                 | Notes                                                                                                                     |
+| ------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                            | `development`           | `development` \| `test` \| `production`. Production refuses placeholder secrets                                           |
+| `LOG_LEVEL`                           | `info`                  | pino level (`fatal` … `trace`, `silent`)                                                                                  |
+| `SERVICE_NAME`                        | `spine-api`             | Log `service` field and `service.name` resource; worker defaults to `spine-worker`                                        |
+| `HTTP_HOST`                           | `0.0.0.0`               | API bind address                                                                                                          |
+| `HTTP_PORT`                           | `3000`                  | API port                                                                                                                  |
+| `TRUST_PROXY`                         | `false`                 | `true` only behind nginx (see Client IPs)                                                                                 |
+| `CORS_ALLOWED_ORIGINS`                | `http://localhost:5173` | Comma-separated origins allowed with credentials                                                                          |
+| `RATE_LIMIT_MAX_PER_MINUTE`           | `600`                   | Per-client API limit (Redis-backed); raise for load tests                                                                 |
+| `ENABLE_API_DOCS`                     | non-production only     | Swagger UI at `/docs`                                                                                                     |
+| `DATABASE_URL`                        | **required**            | `postgres://user:pass@host:5432/db` (Compose builds it from `POSTGRES_*`)                                                 |
+| `DATABASE_POOL_MAX`                   | `10`                    | pg pool size per process                                                                                                  |
+| `DATABASE_MIGRATION_URL`              | unset                   | Owner credentials for migrations; when set, migrate also provisions the `DATABASE_URL` role (ADR-0092)                    |
+| `DB_ALLOW_PRIVILEGED_ROLE`            | `false`                 | Production refuses a `DATABASE_URL` role that can rewrite `audit_log` unless `true`                                       |
+| `MIGRATE_ON_START`                    | `true`                  | API applies pending migrations at start (the worker never does). Compose and systemd set `false` and use the migrate step |
+| `MIGRATIONS_DIR`                      | `migrations`            | `/app/migrations` in the image                                                                                            |
+| `REDIS_URL`                           | **required**            | `redis://host:6379`                                                                                                       |
+| `AUTH_JWT_SECRET`                     | **required**            | ≥ 32 random characters (`openssl rand -base64 48`)                                                                        |
+| `AUTH_ACCESS_TTL_SECONDS`             | `900`                   | 60–3600                                                                                                                   |
+| `AUTH_REFRESH_TTL_SECONDS`            | `604800`                | ≥ 3600                                                                                                                    |
+| `COOKIE_SECURE`                       | `true`                  | `false` only for plain-HTTP local use                                                                                     |
+| `AUTH_LOGIN_MAX_PER_MINUTE`           | `10`                    | Per-IP + email login attempts per minute, in the API (nginx adds its own per-IP limit)                                    |
+| `AUTH_USER_CACHE_TTL_SECONDS`         | `30`                    | 0–30; how long a disabled user or role change may take to apply                                                           |
+| `BOOTSTRAP_ADMIN_EMAIL`               | unset                   | First-run admin, created only when no user exists (ADR-0066)                                                              |
+| `BOOTSTRAP_ADMIN_PASSWORD`            | unset                   | ≥ 12 characters; production refuses placeholders                                                                          |
+| `INGEST_MAX_BACKLOG`                  | `10000`                 | Outbox backlog above which ingestion answers 503 (back-pressure)                                                          |
+| `WEBHOOK_SOURCES_JSON`                | `{}`                    | `{"<id>": {"normalizer": "…", "secret": "≥32 chars"}}`                                                                    |
+| `OUTBOX_POLL_INTERVAL_MS`             | `50`                    | Relay poll interval when idle                                                                                             |
+| `OUTBOX_BATCH_SIZE`                   | `100`                   | Events per relay transaction                                                                                              |
+| `EVENT_WORKER_CONCURRENCY`            | `8`                     | Parallel event deliveries per worker                                                                                      |
+| `PLAYBOOK_WORKER_CONCURRENCY`         | `4`                     | Parallel playbook steps per worker                                                                                        |
+| `PLAYBOOK_APPROVAL_SWEEP_INTERVAL_MS` | `30000`                 | How often expired approvals are swept                                                                                     |
+| `METRICS_PORT`                        | `9464`                  | Prometheus endpoint; `0` disables it                                                                                      |
+| `OTEL_EXPORTER_OTLP_ENDPOINT`         | unset                   | e.g. `http://jaeger:4318`; traces are exported only when set                                                              |
+| `CONFIG_DIR`                          | `config`                | Rulesets and playbooks; `/app/config` in the image                                                                        |
+| `SIMULATION_LATENCY_MS`               | `50`                    | Simulated response-action latency (ADR-0018)                                                                              |
+| `SIMULATION_FAILURE_RATE`             | `0`                     | 0–1, injected failures for demos and chaos tests                                                                          |
+| `SHUTDOWN_TIMEOUT_MS`                 | `15000`                 | Graceful shutdown budget; keep the orchestrator's stop timeout above it                                                   |
 
 Compose-only variables (read by `infra/docker-compose.yml`, not by the app):
 `POSTGRES_USER`, `POSTGRES_PASSWORD` (required), `POSTGRES_DB`, `GRAFANA_ADMIN_PASSWORD`
@@ -208,7 +221,9 @@ Compose-only variables (read by `infra/docker-compose.yml`, not by the app):
       webhook secret, or with `COOKIE_SECURE=false` (security review F1).
 - [ ] New random webhook secrets per source (`openssl rand -hex 32`), shared only with that sensor.
 - [ ] Don't run the demo seeder (`dist/cli/seed.js`): it refuses in production unless forced.
-- [ ] Real `POSTGRES_PASSWORD` and `GRAFANA_ADMIN_PASSWORD`; `.env` mode `0600`.
+- [ ] Real `POSTGRES_PASSWORD`, `SPINE_APP_DB_PASSWORD` and `GRAFANA_ADMIN_PASSWORD`; `.env` mode `0600`.
+- [ ] The API and worker connect as the runtime role, not the owner (ADR-0092). They **refuse to
+      start** in production as a role that can rewrite the audit log (security review F4).
 - [ ] A CA-signed certificate in `infra/tls/`, `SPINE_HSTS_MAX_AGE=63072000`, HTTP → HTTPS redirect.
 - [ ] `CORS_ALLOWED_ORIGINS` = your console origin only.
 - [ ] Backups scheduled and a restore tested ([backup-restore.md](backup-restore.md)).

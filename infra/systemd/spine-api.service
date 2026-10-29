@@ -9,8 +9,10 @@
 [Unit]
 Description=Spine SOAR API
 Documentation=https://github.com/abdoukh4-art/spine/blob/main/docs/operations/deployment.md
-After=network-online.target postgresql.service redis-server.service
+After=network-online.target spine-migrate.service postgresql.service redis-server.service
 Wants=network-online.target
+# Migrations run first, as the owner, in their own unit (ADR-0092).
+Requires=spine-migrate.service
 # Give up after 5 crashes in 60 s instead of restart-looping forever.
 StartLimitIntervalSec=60s
 StartLimitBurst=5
@@ -21,7 +23,7 @@ User=spine
 Group=spine
 WorkingDirectory=/opt/spine
 EnvironmentFile=/etc/spine/spine.env
-Environment=NODE_ENV=production SERVICE_NAME=spine-api MIGRATIONS_DIR=/opt/spine/migrations CONFIG_DIR=/opt/spine/config
+Environment=NODE_ENV=production SERVICE_NAME=spine-api MIGRATE_ON_START=false MIGRATIONS_DIR=/opt/spine/migrations CONFIG_DIR=/opt/spine/config
 ExecStart=/usr/bin/node --enable-source-maps --import ./dist/instrument.js dist/main.js
 
 # Lifecycle: SIGTERM starts the graceful shutdown (stop accepting, drain, close pools).

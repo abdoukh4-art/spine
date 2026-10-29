@@ -7,8 +7,10 @@
 [Unit]
 Description=Spine SOAR worker
 Documentation=https://github.com/abdoukh4-art/spine/blob/main/docs/operations/deployment.md
-After=network-online.target postgresql.service redis-server.service spine-api.service
+After=network-online.target spine-migrate.service postgresql.service redis-server.service spine-api.service
 Wants=network-online.target
+# Migrations run first, as the owner, in their own unit (ADR-0092).
+Requires=spine-migrate.service
 # Give up after 5 crashes in 60 s instead of restart-looping forever.
 StartLimitIntervalSec=60s
 StartLimitBurst=5

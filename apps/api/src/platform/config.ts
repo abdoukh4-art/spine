@@ -37,6 +37,13 @@ const ConfigSchema = z.object({
 
   DATABASE_URL: z.url(),
   DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(100).default(10),
+  /**
+   * Owner credentials for migrations (ADR-0092). When set, migrations run with this URL and the
+   * runtime role from DATABASE_URL is created/updated as a member of `spine_runtime`.
+   */
+  DATABASE_MIGRATION_URL: z.url().optional(),
+  /** Production refuses to start when DATABASE_URL can rewrite the audit log, unless this is true. */
+  DB_ALLOW_PRIVILEGED_ROLE: bool.default(false),
   MIGRATE_ON_START: bool.default(true),
   MIGRATIONS_DIR: z.string().default('migrations'),
   REDIS_URL: z.url(),
