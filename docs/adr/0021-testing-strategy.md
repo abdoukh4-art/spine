@@ -46,6 +46,8 @@ Each test file gets an isolated schema (`CREATE SCHEMA test_<random>`) so files 
 **Coverage gates** (`vitest --coverage`, v8): ≥ 85 % lines/branches for
 `packages/playbook-engine`, `packages/enrichers`, `packages/shared-schema` and
 `apps/api/src/modules/*/domain`. ≥ 70 % for the whole API. CI fails below the threshold.
+_Update 2026-10-29: the API gates weren't actually configured until [ADR-0091](0091-combined-unit-and-integration-coverage.md),
+which also measures the API over unit + integration tests (gate 90 % lines / 80 % branches)._
 
 **Conventions:** test names state behaviour ("rejects a playbook whose graph has a cycle"),
 Arrange-Act-Assert, no sleeping in tests (fake timers and injectable clocks), fixtures in

@@ -67,7 +67,7 @@ The tutorials got the same treatment: I rehearsed each one against the code, and
 were corrected (a deep field-path typo is _not_ caught at load time; a ruleset change needs a
 restart).
 
-## 4. The flaky test, again
+## 4. The flaky test, again (solved: see the postscript)
 
 CI's `test-integration` failed once on the security commit and passed on the next two pushes
 with no related change, and the full suite passed 3/3 times locally afterwards. CI logs aren't downloadable from this environment (the log storage host
@@ -84,3 +84,28 @@ when that job fails, so the next occurrence explains itself.
 - **"Fail closed" isn't automatically safe.** For a rate limiter in front of everything, failing
   closed makes a cache problem an outage. Pick fail-open/closed per control and write down why.
 - **Run your own README.** A claim you haven't executed is a hypothesis.
+
+## Postscript (2026-10-29): the flaky test, solved
+
+The flake came back, and this time on my machine, during the first run with coverage
+instrumentation. With the output in hand:
+
+```
+AssertionError: expected null to be 100
+ ❯ test/integration/end-to-end.test.ts:155
+    expect(detail.summary.score).toBe(detail.score?.score);
+```
+
+_Observation:_ the score row said 100; the alert's `summary.score` was still `null`.
+_Hypothesis:_ they're written by different transactions. _Check:_ `scoring` stores the score
+together with the `alert.scored` event; `alerts.project-score` is a **separate subscriber** that
+copies it onto the alert's queue columns one outbox hop later. The test polled until the score
+existed, then read the projection once, a race it usually won. Coverage instrumentation slows
+everything down a little, and that was enough to lose it.
+
+So the product was right (eventual consistency, by design, ADR-0009) and the test assumed
+read-your-writes across two consumers. _Fix:_ poll for the projection too. Two full runs with
+coverage passed afterwards (535/535 both times).
+
+**Lesson:** "flaky" is usually a race the test doesn't know it's in. Slowing the system down
+(instrumentation, a loaded CI runner) is a cheap way to make a race show itself.

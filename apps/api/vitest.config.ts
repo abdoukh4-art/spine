@@ -29,6 +29,11 @@ export default defineConfig({
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.test.ts', 'src/main.ts', 'src/worker.ts', 'src/cli/**'],
       reporter: ['text-summary', 'json-summary', 'lcov'],
+      // Domain code must be covered by unit tests alone (ADR-0021). The whole-API gate applies to
+      // the combined unit + integration run only (`test:coverage:all`, ADR-0091).
+      thresholds: {
+        'src/modules/*/domain/**': { lines: 85, branches: 85, functions: 85, statements: 85 },
+      },
     },
   },
 });

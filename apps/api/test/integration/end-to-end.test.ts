@@ -151,8 +151,15 @@ describe('end-to-end: alert to response', () => {
         },
       )
       .toBeGreaterThanOrEqual(80);
+    // The queue's `summary.score` is a projection fed by its own `alert.scored` subscriber, so
+    // it is eventually consistent with the score row: wait for it instead of racing it.
+    await expect
+      .poll(async () => {
+        const d = await get<AlertDetail>(`/api/v1/alerts/${alertId}`);
+        return d.summary.score !== null && d.summary.score === d.score?.score;
+      })
+      .toBe(true);
     const detail = await get<AlertDetail>(`/api/v1/alerts/${alertId}`);
-    expect(detail.summary.score).toBe(detail.score?.score);
     expect(detail.enrichments.some((e) => e.verdict === 'malicious')).toBe(true);
     expect(detail.score?.factors.length).toBeGreaterThan(1);
 
