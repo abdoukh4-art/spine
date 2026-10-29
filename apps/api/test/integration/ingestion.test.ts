@@ -119,7 +119,12 @@ function racyServer(parties: number) {
       }
     },
   };
-  const ingestion = createIngestionModule(deps, { alerts: racy });
+  // 20 concurrent requests is the point of this test; the in-flight cap (16 by default,
+  // ADR-0093) would rightly shed some of them, so it's raised here.
+  const ingestion = createIngestionModule(
+    { ...deps, config: { ...deps.config, INGEST_MAX_IN_FLIGHT: 64 } },
+    { alerts: racy },
+  );
   return {
     lostRaces: () => lost,
     http: buildHttpServer({
