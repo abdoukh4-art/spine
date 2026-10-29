@@ -2,21 +2,23 @@ import type { MetricsQuery, MetricsSummary } from '@spine/shared-schema';
 import { ValidationError } from '../../../platform/errors.js';
 import type { Clock } from '../../../platform/runtime.js';
 import {
-  buildMetricsSummary,
-  type AlertTimes,
-  type RunTimes,
+  summaryFromAggregates,
+  type AlertAggregates,
+  type RunAggregates,
   type TimeWindow,
 } from '../domain/soc-metrics.js';
 
 /**
  * Port: the read model the Metrics module needs. It's implemented in the composition root
  * on top of the Alerts and Playbooks public APIs, so Metrics never reads other modules' tables.
+ * It returns **aggregates**, computed by the owners in the database (ADR-0095): memory stays
+ * constant whatever the alert volume or window length.
  */
 export interface MetricsReadModel {
-  /** Alerts whose `receivedAt` is in [from, to). */
-  alertsReceivedBetween(window: TimeWindow): Promise<AlertTimes[]>;
-  /** Runs that finished in [from, to), plus runs that are still in flight. */
-  runsBetween(window: TimeWindow): Promise<RunTimes[]>;
+  /** Aggregates of the alerts whose `receivedAt` is in [from, to). */
+  alertStats(window: TimeWindow): Promise<AlertAggregates>;
+  /** Aggregates of the runs that finished in [from, to), plus runs still in flight. */
+  runStats(window: TimeWindow): Promise<RunAggregates>;
 }
 
 export const DEFAULT_WINDOW_MS = 7 * 24 * 3_600_000;
@@ -49,9 +51,9 @@ export class GetMetricsSummary {
   async execute(query: MetricsQuery): Promise<MetricsSummary> {
     const window = resolveWindow(query, this.clock);
     const [alerts, runs] = await Promise.all([
-      this.readModel.alertsReceivedBetween(window),
-      this.readModel.runsBetween(window),
+      this.readModel.alertStats(window),
+      this.readModel.runStats(window),
     ]);
-    return buildMetricsSummary(window, alerts, runs);
+    return summaryFromAggregates(window, alerts, runs);
   }
 }

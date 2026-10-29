@@ -93,8 +93,8 @@ export function createApplication(
     audit: auth.api.audit,
   });
   const metrics = createMetricsModule(deps, {
-    alertsReceivedBetween: ({ from, to }) => alerts.api.timesReceivedBetween(from, to),
-    runsBetween: ({ from, to }) => playbooks.api.runTimesBetween(from, to),
+    alertStats: ({ from, to }) => alerts.api.statsReceivedBetween(from, to),
+    runStats: ({ from, to }) => playbooks.api.runStatsBetween(from, to),
   });
 
   const modules = [auth, alerts, ingestion, enrichment, scoring, playbooks, metrics].map(

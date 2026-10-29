@@ -78,18 +78,27 @@ const FINISHED_FOR_RATE: readonly RunStatus[] = ['succeeded', 'failed', 'compens
 const IN_FLIGHT: readonly RunStatus[] = ['pending', 'running', 'waiting_approval', 'compensating'];
 
 /**
- * Playbook success rate = succeeded / (succeeded + failed + compensated) over finished,
- * non-dry-run runs; cancelled runs are excluded (a human chose to stop them). Latency
- * excludes approval waiting time, which is reported separately.
+ * What the playbook metrics need from a set of runs (ADR-0095): counts per outcome and the two
+ * duration distributions. Produced by the database in production (`runStatsBetween`) and by
+ * {@link aggregateRuns} from rows, which is the executable specification of the formulas.
  */
-export function computePlaybookStats(runs: readonly RunTimes[]): MetricsSummary['playbooks'] {
+export interface RunAggregates {
+  succeeded: number;
+  failed: number;
+  compensated: number;
+  cancelled: number;
+  inFlight: number;
+  latency: DurationStat;
+  approvalWait: DurationStat;
+}
+
+/**
+ * Aggregates runs: dry runs never count. Latency excludes approval waiting time (reported
+ * separately) and is measured over finished runs (succeeded, failed, compensated) only.
+ */
+export function aggregateRuns(runs: readonly RunTimes[]): RunAggregates {
   const real = runs.filter((r) => !r.dryRun);
   const count = (status: RunStatus) => real.filter((r) => r.status === status).length;
-  const succeeded = count('succeeded');
-  const failed = count('failed');
-  const compensated = count('compensated');
-  const denominator = succeeded + failed + compensated;
-
   const finished = real.filter(
     (r) => FINISHED_FOR_RATE.includes(r.status) && r.startedAt !== null && r.finishedAt !== null,
   );
@@ -102,19 +111,41 @@ export function computePlaybookStats(runs: readonly RunTimes[]): MetricsSummary[
   const approvalWaits = finished
     .filter((r) => r.approvalWaitMs > 0)
     .map((r) => r.approvalWaitMs / 1000);
-
   return {
-    successRate: denominator === 0 ? null : Math.round((succeeded / denominator) * 10_000) / 10_000,
-    runs: {
-      succeeded,
-      failed,
-      compensated,
-      cancelled: count('cancelled'),
-      inFlight: real.filter((r) => IN_FLIGHT.includes(r.status)).length,
-    },
+    succeeded: count('succeeded'),
+    failed: count('failed'),
+    compensated: count('compensated'),
+    cancelled: count('cancelled'),
+    inFlight: real.filter((r) => IN_FLIGHT.includes(r.status)).length,
     latency: durationStat(latency),
     approvalWait: durationStat(approvalWaits),
   };
+}
+
+/**
+ * Playbook success rate = succeeded / (succeeded + failed + compensated) over finished,
+ * non-dry-run runs; cancelled runs are excluded (a human chose to stop them).
+ */
+export function playbookStatsFrom(agg: RunAggregates): MetricsSummary['playbooks'] {
+  const denominator = agg.succeeded + agg.failed + agg.compensated;
+  return {
+    successRate:
+      denominator === 0 ? null : Math.round((agg.succeeded / denominator) * 10_000) / 10_000,
+    runs: {
+      succeeded: agg.succeeded,
+      failed: agg.failed,
+      compensated: agg.compensated,
+      cancelled: agg.cancelled,
+      inFlight: agg.inFlight,
+    },
+    latency: agg.latency,
+    approvalWait: agg.approvalWait,
+  };
+}
+
+/** Playbook metrics straight from rows (the specification; see {@link aggregateRuns}). */
+export function computePlaybookStats(runs: readonly RunTimes[]): MetricsSummary['playbooks'] {
+  return playbookStatsFrom(aggregateRuns(runs));
 }
 
 /** UTC calendar day (YYYY-MM-DD) of a date. */
@@ -123,14 +154,48 @@ export function utcDay(date: Date): string {
 }
 
 /**
+ * What the alert metrics need from the alerts received in a window (ADR-0095). Counts per
+ * severity and per day are sparse. Produced by the database in production
+ * (`statsReceivedBetween`) and by {@link aggregateAlerts} from rows (the specification).
+ */
+export interface AlertAggregates {
+  total: number;
+  bySeverity: { severity: Severity; count: number }[];
+  byDay: { day: string; count: number }[];
+  mttd: DurationStat & { clockSkewCount: number };
+  mttr: DurationStat & { openCount: number };
+}
+
+/** Aggregates alert rows exactly as the database query must (the executable specification). */
+export function aggregateAlerts(alerts: readonly AlertTimes[]): AlertAggregates {
+  const bySeverity = new Map<Severity, number>();
+  const byDay = new Map<string, number>();
+  for (const a of alerts) {
+    bySeverity.set(a.severity, (bySeverity.get(a.severity) ?? 0) + 1);
+    const day = utcDay(a.receivedAt);
+    byDay.set(day, (byDay.get(day) ?? 0) + 1);
+  }
+  return {
+    total: alerts.length,
+    bySeverity: [...bySeverity.entries()].map(([severity, count]) => ({ severity, count })),
+    byDay: [...byDay.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([day, count]) => ({ day, count })),
+    mttd: computeMttd(alerts),
+    mttr: computeMttr(alerts),
+  };
+}
+
+/**
  * Alert volume in the window: total, per severity (every severity present, zero-filled)
  * and per UTC day (every day of the window present, zero-filled, so charts have no gaps).
  */
-export function computeAlertVolume(
-  alerts: readonly AlertTimes[],
+export function alertVolumeFrom(
+  agg: AlertAggregates,
   window: TimeWindow,
 ): MetricsSummary['alertVolume'] {
   const bySeverity = Object.fromEntries(SEVERITIES.map((s) => [s, 0])) as Record<Severity, number>;
+  for (const { severity, count } of agg.bySeverity) bySeverity[severity] += count;
   const byDayMap = new Map<string, number>();
   for (
     let day = new Date(
@@ -141,13 +206,9 @@ export function computeAlertVolume(
   ) {
     byDayMap.set(utcDay(day), 0);
   }
-  for (const a of alerts) {
-    bySeverity[a.severity] += 1;
-    const key = utcDay(a.receivedAt);
-    byDayMap.set(key, (byDayMap.get(key) ?? 0) + 1);
-  }
+  for (const { day, count } of agg.byDay) byDayMap.set(day, (byDayMap.get(day) ?? 0) + count);
   return {
-    total: alerts.length,
+    total: agg.total,
     bySeverity,
     byDay: [...byDayMap.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
@@ -155,17 +216,34 @@ export function computeAlertVolume(
   };
 }
 
-/** Assembles the full summary for a window from read-model rows. */
+/** Alert volume straight from rows (the specification; see {@link aggregateAlerts}). */
+export function computeAlertVolume(
+  alerts: readonly AlertTimes[],
+  window: TimeWindow,
+): MetricsSummary['alertVolume'] {
+  return alertVolumeFrom(aggregateAlerts(alerts), window);
+}
+
+/** Assembles the full summary for a window from aggregates (what production uses). */
+export function summaryFromAggregates(
+  window: TimeWindow,
+  alerts: AlertAggregates,
+  runs: RunAggregates,
+): MetricsSummary {
+  return {
+    window: { from: window.from.toISOString(), to: window.to.toISOString() },
+    alertVolume: alertVolumeFrom(alerts, window),
+    mttd: alerts.mttd,
+    mttr: alerts.mttr,
+    playbooks: playbookStatsFrom(runs),
+  };
+}
+
+/** Assembles the full summary for a window from read-model rows (the specification). */
 export function buildMetricsSummary(
   window: TimeWindow,
   alerts: readonly AlertTimes[],
   runs: readonly RunTimes[],
 ): MetricsSummary {
-  return {
-    window: { from: window.from.toISOString(), to: window.to.toISOString() },
-    alertVolume: computeAlertVolume(alerts, window),
-    mttd: computeMttd(alerts),
-    mttr: computeMttr(alerts),
-    playbooks: computePlaybookStats(runs),
-  };
+  return summaryFromAggregates(window, aggregateAlerts(alerts), aggregateRuns(runs));
 }

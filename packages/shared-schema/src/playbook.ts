@@ -9,11 +9,14 @@ import { ConditionSchema } from './condition.js';
  * are enforced by `@spine/playbook-engine`'s `validatePlaybook`.
  */
 
+/** A step ID: lower-kebab-case, unique within its playbook, used in `next`/`branches` references. */
 export const StepIdSchema = z
   .string()
   .regex(/^[a-z0-9][a-z0-9-]{0,62}$/, 'lower-kebab-case, ≤ 63 chars');
+/** A playbook ID: same rules as a step ID; stable across versions. */
 export const PlaybookIdSchema = StepIdSchema;
 
+/** Per-step retries: up to `maxAttempts` tries in total, waiting `backoffMs` between them. */
 export const RetryPolicySchema = z
   .object({
     maxAttempts: z.number().int().min(1).max(10).default(1),
@@ -35,6 +38,7 @@ const stepCommon = {
 /** Template strings may reference `{{path}}` lookups only — no expressions (ADR-0013). */
 const TemplateString = z.string().min(1).max(2000);
 
+/** `enrich`: (re-)run enrichment for the alert, optionally limited to some providers. */
 export const EnrichStepSchema = z
   .object({
     ...stepCommon,
@@ -47,6 +51,7 @@ export const EnrichStepSchema = z
   })
   .strict();
 
+/** `score`: (re-)score the alert with the active ruleset. */
 export const ScoreStepSchema = z
   .object({
     ...stepCommon,
@@ -56,6 +61,7 @@ export const ScoreStepSchema = z
   })
   .strict();
 
+/** `branch`: go to the first branch whose condition matches (same predicate language as scoring rules). */
 export const BranchStepSchema = z
   .object({
     ...stepCommon,
@@ -69,6 +75,7 @@ export const BranchStepSchema = z
   })
   .strict();
 
+/** `notify`: post a templated message to a (simulated) chat channel. */
 export const NotifyStepSchema = z
   .object({
     ...stepCommon,
@@ -83,6 +90,7 @@ export const NotifyStepSchema = z
   })
   .strict();
 
+/** `create_ticket`: open a (simulated) ticket; compensated by closing it if the run is rolled back. */
 export const CreateTicketStepSchema = z
   .object({
     ...stepCommon,
@@ -102,6 +110,10 @@ export const CreateTicketStepSchema = z
   })
   .strict();
 
+/**
+ * `block_indicator`: block the alert's indicators of the given types on the (simulated) firewall
+ * for `durationMinutes`, only when their verdict is at least `minVerdict`. Compensated by unblocking.
+ */
 export const BlockIndicatorStepSchema = z
   .object({
     ...stepCommon,
@@ -122,6 +134,7 @@ export const BlockIndicatorStepSchema = z
   })
   .strict();
 
+/** `set_status`: move the alert to a new status (subject to the allowed transitions). */
 export const SetStatusStepSchema = z
   .object({
     ...stepCommon,
@@ -133,6 +146,10 @@ export const SetStatusStepSchema = z
   })
   .strict();
 
+/**
+ * `approval`: pause the run until a human with `approverRole` decides, or until `expiresInMs`
+ * elapses and `onTimeout` applies. Approved → `next`; rejected → `onReject`.
+ */
 export const ApprovalStepSchema = z
   .object({
     ...stepCommon,
@@ -158,6 +175,7 @@ export const ApprovalStepSchema = z
   })
   .strict();
 
+/** Any step, discriminated by `type`. Unknown fields are rejected (`.strict()`), so typos fail validation. */
 export const StepSchema = z.discriminatedUnion('type', [
   EnrichStepSchema,
   ScoreStepSchema,
@@ -169,7 +187,9 @@ export const StepSchema = z.discriminatedUnion('type', [
   ApprovalStepSchema,
 ]);
 export type Step = z.infer<typeof StepSchema>;
+/** The `type` of a step, e.g. `notify`. */
 export type StepType = Step['type'];
+/** Every step type, checked against {@link StepType} at compile time. */
 export const STEP_TYPES = [
   'enrich',
   'score',
@@ -181,6 +201,7 @@ export const STEP_TYPES = [
   'approval',
 ] as const satisfies readonly StepType[];
 
+/** When a playbook runs automatically: on `alert.scored`, if the optional condition matches. */
 export const PlaybookTriggerSchema = z
   .object({
     event: z.literal('alert.scored'),
@@ -188,6 +209,10 @@ export const PlaybookTriggerSchema = z
   })
   .strict();
 
+/**
+ * A complete playbook document (`apiVersion: spine/v1`, `kind: Playbook`): metadata, optional
+ * trigger, the start step and the steps. Shape only; `validatePlaybook` checks the graph.
+ */
 export const PlaybookDefinitionSchema = z
   .object({
     apiVersion: z.literal('spine/v1'),
@@ -207,12 +232,14 @@ export const PlaybookDefinitionSchema = z
   })
   .strict();
 export type PlaybookDefinition = z.infer<typeof PlaybookDefinitionSchema>;
+/** A playbook as written (defaults not yet applied), e.g. parsed YAML before validation. */
 export type PlaybookDefinitionInput = z.input<typeof PlaybookDefinitionSchema>;
 
 // ---------------------------------------------------------------------------
 // Runs (event-sourced, ADR-0010)
 // ---------------------------------------------------------------------------
 
+/** Lifecycle of a playbook run, derived from its event stream (ADR-0010). */
 export const RUN_STATUSES = [
   'pending',
   'running',
@@ -223,8 +250,10 @@ export const RUN_STATUSES = [
   'compensated',
   'cancelled',
 ] as const;
+/** Validates a {@link RUN_STATUSES} value. */
 export const RunStatusSchema = z.enum(RUN_STATUSES);
 export type RunStatus = z.infer<typeof RunStatusSchema>;
+/** Statuses a run never leaves. */
 export const TERMINAL_RUN_STATUSES: readonly RunStatus[] = [
   'succeeded',
   'failed',
@@ -232,6 +261,7 @@ export const TERMINAL_RUN_STATUSES: readonly RunStatus[] = [
   'cancelled',
 ];
 
+/** Events in a run's append-only stream; the run's state is a fold over them (ADR-0010). */
 export const RUN_EVENT_TYPES = [
   'run.started',
   'step.started',
@@ -250,9 +280,11 @@ export const RUN_EVENT_TYPES = [
   'run.compensated',
   'run.cancelled',
 ] as const;
+/** Validates a {@link RUN_EVENT_TYPES} value. */
 export const RunEventTypeSchema = z.enum(RUN_EVENT_TYPES);
 export type RunEventType = z.infer<typeof RunEventTypeSchema>;
 
+/** One event in a run's stream, ordered by `seq` (unique per run). */
 export const RunEventSchema = z.object({
   runId: IdSchema,
   seq: z.number().int().min(1),
@@ -263,6 +295,7 @@ export const RunEventSchema = z.object({
 });
 export type RunEvent = z.infer<typeof RunEventSchema>;
 
+/** A run as listed: which playbook version, which alert, its status and where it is now. */
 export const RunSummarySchema = z.object({
   id: IdSchema,
   playbookId: z.string(),
@@ -278,6 +311,7 @@ export const RunSummarySchema = z.object({
 });
 export type RunSummary = z.infer<typeof RunSummarySchema>;
 
+/** Per-step state shown in the run timeline, derived from the run's events. */
 export const STEP_STATES = [
   'pending',
   'running',
@@ -287,6 +321,7 @@ export const STEP_STATES = [
   'waiting',
   'compensated',
 ] as const;
+/** One step's derived state: status, attempts, output or error, and timing. */
 export const StepStateSchema = z.object({
   stepId: z.string(),
   type: z.string(),
@@ -299,12 +334,14 @@ export const StepStateSchema = z.object({
 });
 export type StepState = z.infer<typeof StepStateSchema>;
 
+/** `GET /runs/:id`: the summary plus the full event stream and per-step state. */
 export const RunDetailSchema = RunSummarySchema.extend({
   events: z.array(RunEventSchema),
   steps: z.array(StepStateSchema),
 });
 export type RunDetail = z.infer<typeof RunDetailSchema>;
 
+/** One stored, immutable playbook version with its original source text. */
 export const PlaybookRecordSchema = z.object({
   id: z.string(),
   version: z.number().int(),
@@ -316,6 +353,7 @@ export const PlaybookRecordSchema = z.object({
 });
 export type PlaybookRecord = z.infer<typeof PlaybookRecordSchema>;
 
+/** A playbook as listed: latest version, whether automatic triggering is enabled, size and tags. */
 export const PlaybookSummarySchema = z.object({
   id: z.string(),
   latestVersion: z.number().int(),
@@ -327,10 +365,13 @@ export const PlaybookSummarySchema = z.object({
 });
 export type PlaybookSummary = z.infer<typeof PlaybookSummarySchema>;
 
+/** Lifecycle of an approval request created by an `approval` step. */
 export const APPROVAL_STATUSES = ['pending', 'approved', 'rejected', 'expired'] as const;
+/** Validates an {@link APPROVAL_STATUSES} value. */
 export const ApprovalStatusSchema = z.enum(APPROVAL_STATUSES);
 export type ApprovalStatus = z.infer<typeof ApprovalStatusSchema>;
 
+/** A pending or decided approval: the prompt, who may decide, the deadline and the decision. */
 export const ApprovalSchema = z.object({
   id: IdSchema,
   runId: IdSchema,
@@ -348,12 +389,14 @@ export const ApprovalSchema = z.object({
 });
 export type Approval = z.infer<typeof ApprovalSchema>;
 
+/** Body of an approval decision (analyst): approve or reject, with an optional comment (audited). */
 export const ApprovalDecisionSchema = z.object({
   decision: z.enum(['approve', 'reject']),
   comment: z.string().max(2000).optional(),
 });
 export type ApprovalDecision = z.infer<typeof ApprovalDecisionSchema>;
 
+/** Response actions Spine can perform. All are SIMULATED: nothing real is blocked or sent (ADR-0018). */
 export const SIMULATED_ACTION_KINDS = [
   'firewall.block',
   'firewall.unblock',
@@ -362,6 +405,7 @@ export const SIMULATED_ACTION_KINDS = [
   'chat.post',
   'alert.set_status',
 ] as const;
+/** A recorded simulated action: what was requested, what the fake integration answered, and by which run. */
 export const SimulatedActionSchema = z.object({
   id: IdSchema,
   kind: z.enum(SIMULATED_ACTION_KINDS),

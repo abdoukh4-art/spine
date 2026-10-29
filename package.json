@@ -16,6 +16,7 @@
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix",
     "lint:arch": "depcruise apps/api/src packages --config .dependency-cruiser.cjs",
+    "check:tsdoc": "node scripts/check-tsdoc.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "pnpm -r test",

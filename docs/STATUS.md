@@ -1,101 +1,112 @@
 # Project status: final report for v0.1.0
 
-> **Honest by rule:** every number below comes from a run that was executed and observed on
-> 2026-10-28. Anything not proven by a test or a recorded run is listed as unverified.
+> **Honest by rule:** every number below comes from a run that was executed and observed.
+> Anything not proven by a test or a recorded run is listed as unverified.
 
-_Last updated: 2026-10-28 (night), end of Phase 3._
+_Last updated: 2026-10-29. v0.1 shipped on 2026-10-28; the gaps it listed were closed on 2026-10-29
+(PRs #10–#12), and closing them overturned two earlier conclusions (see the
+[journal](journal/2026-10-29-closing-the-gaps.md))._
 
 ## Phase overview
 
-| Phase | Scope                                                                                                                        | State                       |
-| ----- | ---------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
-| 0     | Vision, ADRs, contracts, monorepo skeleton, CI, docs hub                                                                     | ✅ done (PR #1)             |
-| 1     | Auth+audit (#2) · Playbooks (#3) · Enrichment+scoring (#4) · Ingestion+alerts (#5) · Console (#6) · Infra+observability (#7) | ✅ merged                   |
-| 2     | Integration, metrics, demo, contract + e2e tests, tutorials                                                                  | ✅ done (PR #8)             |
-| 3     | Security review, performance, docs completeness, final README, release PR                                                    | ✅ done (PR #8, release PR) |
+| Phase | Scope                                                                                                                        | State                                |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| 0     | Vision, ADRs, contracts, monorepo skeleton, CI, docs hub                                                                     | ✅ done (PR #1)                      |
+| 1     | Auth+audit (#2) · Playbooks (#3) · Enrichment+scoring (#4) · Ingestion+alerts (#5) · Console (#6) · Infra+observability (#7) | ✅ merged                            |
+| 2     | Integration, metrics, demo, contract + e2e tests, tutorials                                                                  | ✅ done (PR #8)                      |
+| 3     | Security review, performance, docs completeness, final README                                                                | ✅ done (PR #8)                      |
+| 3+    | Close the reported gaps: coverage (#10), DB roles / F4 (#11), overload behaviour, DB-side metrics, TSDoc (#12)               | ✅ done                              |
+| —     | Release PR `develop → main` "Spine v0.1.0"                                                                                   | open for the owner, **never merged** |
 
 ## Complete (verified)
 
 ### Features (vision scope)
 
-| #   | Feature                                                                                                                         | Evidence                                                               |
-| --- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| 1   | Ingestion: REST, HMAC-signed webhooks (Suricata EVE, generic), CEF/syslog and NDJSON batch; idempotency keys; fingerprint dedup | ingestion unit + integration tests; demo scenarios 3 and 4             |
-| 2   | Canonical alert (ECS/OCSF-inspired) with MITRE ATT&CK mapping                                                                   | ADR-0011; normalizer tests; contract tests                             |
-| 3   | Pluggable enrichers (reputation, geo, asset inventory; fixture-driven mocks) with timeout, retry + jitter, breaker, bulkhead    | enrichers package (100 % lines), property tests                        |
-| 4   | Explainable, versioned rule scoring                                                                                             | scoring tests incl. fast-check laws; demo scores 70 / 100 / 100 / 5    |
-| 5   | Playbooks: YAML DAG DSL, validation, dry-run, durable event-sourced runs, approvals, retry/timeout, compensation                | playbook-engine (99.6 % lines), end-to-end integration test, demo run  |
-| 6   | Console: alert queue, alert detail with score explanation, runs timeline, approvals, playbooks, metrics; light/dark; WCAG AA    | 141 console tests; 4 Playwright journeys with axe; screenshots         |
-| 7   | Auth: JWT + rotating refresh with reuse detection, argon2id, RBAC viewer/analyst/admin, append-only audit log                   | auth tests incl. RBAC matrix over every route, race test               |
-| 8   | Metrics: MTTD/MTTR (ADR-0026 definitions), alert volume, playbook success rate/latency; Prometheus + Grafana dashboard          | metrics unit tests; demo values (69 alerts, MTTD 70 min, MTTR 188 min) |
-| —   | `make demo` ("Operation Night Owl", five scenarios) on a fresh stack                                                            | run end to end on 2026-10-28; README screenshots taken from it         |
+| #   | Feature                                                                                                                         | Evidence                                                                |
+| --- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| 1   | Ingestion: REST, HMAC-signed webhooks (Suricata EVE, generic), CEF/syslog and NDJSON batch; idempotency keys; fingerprint dedup | ingestion unit + integration tests; demo scenarios 3 and 4              |
+| 2   | Canonical alert (ECS/OCSF-inspired) with MITRE ATT&CK mapping                                                                   | ADR-0011; normalizer tests; contract tests                              |
+| 3   | Pluggable enrichers (reputation, geo, asset inventory; fixture-driven mocks) with timeout, retry + jitter, breaker, bulkhead    | enrichers package (100 % lines), property tests                         |
+| 4   | Explainable, versioned rule scoring                                                                                             | scoring tests incl. fast-check laws; demo scores 70 / 100 / 100 / 5     |
+| 5   | Playbooks: YAML DAG DSL, validation, dry-run, durable event-sourced runs, approvals, retry/timeout, compensation                | playbook-engine (99.6 % lines), end-to-end integration test, demo run   |
+| 6   | Console: alert queue, alert detail with score explanation, runs timeline, approvals, playbooks, metrics; light/dark; WCAG AA    | 141 console tests; 4 Playwright journeys with axe; screenshots          |
+| 7   | Auth: JWT + rotating refresh with reuse detection, argon2id, RBAC viewer/analyst/admin, append-only audit log                   | RBAC matrix over every route, race test, runtime DB role (ADR-0092)     |
+| 8   | Metrics: MTTD/MTTR (ADR-0026), alert volume, playbook success rate/latency; Prometheus + Grafana; aggregated in Postgres        | metrics unit tests + SQL = TypeScript differential test (ADR-0095)      |
+| —   | `make demo` ("Operation Night Owl", five scenarios) on a fresh stack                                                            | run end to end on 2026-10-28 and 2026-10-29; README screenshots from it |
 
 **Every response action is simulated** (firewall block, ticket, chat, status change). There is
-no real offensive or destructive capability anywhere (ADR-0018).
+no real offensive or destructive capability anywhere (ADR-0018). No real secrets or third-party
+calls: everything runs offline from fixtures.
 
-### Tests (all run locally on 2026-10-28, all passing)
+### Tests (all run locally and in CI, all passing)
 
-| Suite                                              | Count                                                                             | Result                        |
-| -------------------------------------------------- | --------------------------------------------------------------------------------- | ----------------------------- |
-| Unit + property (Vitest, fast-check)               | **745**: shared-schema 61, enrichers 93, playbook-engine 65, console 141, api 385 | 745 / 745 ✅                  |
-| Integration (Testcontainers Postgres 16 + Redis 7) | **150**, including the end-to-end pipeline and OpenAPI contract tests             | 150 / 150 ✅, 3 runs in a row |
-| End-to-end (Playwright + axe, real Compose stack)  | **4** analyst journeys                                                            | 4 / 4 ✅ (also green in CI)   |
+| Suite                                              | Count                                                                              |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Unit + property (Vitest, fast-check)               | **762**: shared-schema 61, enrichers 93, playbook-engine 65, console 141, api 402  |
+| Integration (Testcontainers Postgres 16 + Redis 7) | **163**, incl. end-to-end pipeline, OpenAPI contract, DB-role attacks, SQL-vs-spec |
+| End-to-end (Playwright + axe, real Compose stack)  | **4** analyst journeys                                                             |
 
-### Coverage (`pnpm test:coverage`; API also with `test:coverage:all`)
+Mutation checks: the most important tests were also proven to **fail** when the code they guard is
+broken (end-to-end wiring, webhook replay, DB-role `REVOKE`, queue back-pressure, SQL clamp,
+coverage gate).
 
-| Package / layer                  | Lines                     | Branches   |
-| -------------------------------- | ------------------------- | ---------- |
-| packages/playbook-engine         | **99.6 %**                | 90.1 %     |
-| packages/enrichers               | **100 %**                 | 98.4 %     |
-| packages/shared-schema           | **97.4 %**                | 89.5 %     |
-| apps/console                     | 97.8 %                    | 88.7 %     |
-| api `*/domain/` (all 7 modules)  | **98.9–100 %** per module | 91–100 %   |
-| apps/api overall (unit only)     | 60.1 %                    | 56.4 %     |
-| **apps/api, unit + integration** | **95.6 %**                | **86.8 %** |
+### Coverage (enforced in CI)
 
-The ≥ 85 % target for domain code and the playbook engine is met. API adapters (Postgres,
-BullMQ, HTTP) are tested against real infrastructure by the integration suite, so the API's
-meaningful number is the combined run (`pnpm --filter @spine/api test:coverage:all`): **95.6 %
-lines**. CI enforces ≥ 90 % lines / 80 % branches on it, and ≥ 85 % on domain folders from unit
-tests alone ([ADR-0091](adr/0091-combined-unit-and-integration-coverage.md)).
+| Package / layer                                 | Lines      | Branches   | Gate (CI fails below)      |
+| ----------------------------------------------- | ---------- | ---------- | -------------------------- |
+| packages/playbook-engine                        | **99.6 %** | 90.1 %     | 85 %                       |
+| packages/enrichers                              | **100 %**  | 98.4 %     | 85 %                       |
+| packages/shared-schema                          | **97.4 %** | 89.5 %     | 85 %                       |
+| apps/console                                    | 97.8 %     | 88.7 %     | —                          |
+| api `src/modules/*/domain/**` (unit tests only) | 98.9–100 % | 91–100 %   | 85 % (ADR-0091)            |
+| **apps/api, unit + integration**                | **95.6 %** | **86.9 %** | 90 % lines / 80 % branches |
 
-### Performance (k6, one 4-core host, details in [performance.md](operations/performance.md))
+### Performance ([performance.md](operations/performance.md); one 4-core host shared by k6 and the whole stack)
 
-- 200 alerts/s through nginx: **0 errors**, accepted p95 **167 ms** / p99 269 ms, 0.4 % shed with
-  `503 + Retry-After` (back-pressure working as designed).
-- Ingest → scored at 20 alerts/s: p50 98 ms, **p95 125 ms**, p99 269 ms.
-- Two load bugs found and fixed: Redis OOM → HTTP 500s, and polling latency (ADR-0090).
+- **Overload is bounded:** at 250 alerts/s offered, 0 errors and accepted p95 **354 ms**; every
+  request gets `202` or `503 + Retry-After` (vision S3 met). At 400/s, 0.95 % errors (CPU-bound host).
+  Before ADR-0093 the same runs had p95 9.9–14.7 s and 18–52 % errors.
+- **Sustainable rate** = pipeline throughput, **≈ 42–45 alerts/s** on this host; above it,
+  back-pressure keeps the backlog bounded.
+- **Latency at realistic load:** ingest → scored p95 **125 ms** at 20/s.
+- **Soak (30 min at 30 alerts/s):** 55 439 requests, **0 errors**, accepted p95 21 ms; heap and Redis flat,
+  backlog ≤ 22; RSS +6–9 MB over 30 min (a multi-hour soak would confirm the plateau).
+- `GET /metrics/summary` over 177 k alerts and 41 k runs: 0.49 s, with constant memory.
 
 ### Security
 
-- Adversarial review ([report](security/review-2026-10-28.md)): 7 findings. **5 fixed** with
-  regression tests (F1, F2, F3, F5; F3 mutation-checked), **F4 documented** with the operational
-  fix, F6/F7 accepted for v0.1.
+- Adversarial review ([report](security/review-2026-10-28.md)): 7 findings, **5 fixed** with
+  regression tests (F1, F2, F3, F4, F5), 2 accepted for v0.1 (F6 synchronous batch import, F7 no
+  four-eyes approvals).
+- F4 closed by [ADR-0092](adr/0092-separate-migration-and-runtime-database-roles.md): the app runs
+  as a non-owner role and **cannot** rewrite or un-protect the audit log (tested as the attack itself,
+  on the live stack too); production refuses a privileged role.
 - STRIDE [threat model](security/threat-model.md), [OWASP Top 10 mapping](security/owasp-top10.md),
-  [RBAC](security/rbac.md).
-- CI: CodeQL, gitleaks, `pnpm audit` (clean), Trivy on both images (0 fixable HIGH/CRITICAL), SBOM.
+  [RBAC](security/rbac.md). CI: CodeQL, gitleaks, `pnpm audit` (clean), Trivy on both images, SBOM.
 
 ### CI and engineering
 
-- 17 checks on every PR: lint, arch (dependency-cruiser boundaries), typecheck, unit, integration,
-  contract drift, build, docs links, commitlint, CodeQL, gitleaks, deps-audit, SBOM, Docker
-  build + Trivy (api, console), e2e on the full stack. Release workflow (release-please).
-- Feature PRs #1–#8 merged into `develop` after green CI. The release PR `develop → main`
+- 17 checks on every PR: lint (+ TSDoc), arch (dependency-cruiser), typecheck, unit, integration
+  (+ combined coverage gates), contract drift, build, docs links, commitlint, CodeQL, gitleaks,
+  deps-audit, SBOM, Docker build + Trivy (api, console), e2e on the full stack. Release workflow
+  (release-please).
+- PRs #1–#12 merged into `develop` after green CI. The release PR `develop → main`
   ("Spine v0.1.0") is open for the owner's review and is **not merged**.
 
 ### Docs (learning hub)
 
-71 ADRs (MADR, each with rejected alternatives and "what would make us revisit"), C4 / ERD /
+76 ADRs (MADR, each with rejected alternatives and "what would make us revisit"), C4 / ERD /
 sequence diagrams / event catalog / OpenAPI, module guides with exercises and separate solutions
 for every module, 3 tutorials rehearsed against the code, runbooks, SLOs, backup/restore, upgrade,
-threat model, testing strategy, glossary, reading list, and 9 journal entries. CI fails on broken
-links.
+threat model, testing strategy, glossary, reading list, 10 journal entries. **TSDoc on 341/341
+public exports**, enforced in CI (ADR-0094). CI fails on broken links.
 
 ## Stubbed / not done
 
-- **Integrations are simulated by design** (ADR-0018); enrichment providers are fixture-driven mocks. No real third-party calls.
-- Not run: the load-test knee above 200/s, the 30-minute soak, and multi-host runs.
-- F4: the API connects to Postgres as the table owner, so the audit log is append-only by trigger, not by privilege (fix documented, not wired).
+- **Integrations are simulated by design** (ADR-0018); enrichment providers are fixture-driven mocks.
+- **Multi-host performance:** every number was measured on one 4-core machine running k6, nginx, the
+  API, the worker and Postgres together. Separate hosts were not available in this environment;
+  the procedure is documented.
 - Batch import is synchronous within one request (F6); no four-eyes approvals (F7).
 - No retention/purge jobs for `domain_events` or the enrichment inbox (enrichment exercise 5).
 - Playbooks run steps sequentially; parallel branches aren't implemented.
@@ -106,14 +117,14 @@ links.
 - Score-sorted pagination can repeat or skip an alert that is re-scored while paging (ADR-0037).
 - Circuit-breaker state is per process: the API shows its own breakers, the worker's are
   visible only as metrics.
+- The in-flight cap is per API process (N replicas allow N × 16); a fixed cap, not adaptive (ADR-0093).
 - Locally (this build environment) the console image can't run `apk upgrade` (Alpine CDN
   unreachable), so `APK_UPGRADE=false` is set in `.env`. CI upgrades normally.
 
 ## Recommended next steps
 
-1. Separate migration and runtime database roles (F4) with an ADR and Compose support.
-2. Run the load-test knee sweep, the 30-minute soak, and a multi-host run.
-3. `LISTEN/NOTIFY` outbox wake-ups and slimmer queue payloads (ADR-0090 "revisit").
-4. Retention jobs for `domain_events` and the enrichment inbox.
-5. Async batch imports (F6), four-eyes approvals (F7), parallel playbook branches.
-6. OIDC SSO, more source normalizers (OCSF export), more step types (tutorial 03's `isolate_host`).
+1. Load-test on separate hosts (API, worker, Postgres, load generator), then tune `EVENT_WORKER_CONCURRENCY` and the pool.
+2. `LISTEN/NOTIFY` outbox wake-ups and slimmer queue payloads (ADR-0090 "revisit").
+3. Retention jobs for `domain_events` and the enrichment inbox.
+4. Async batch imports (F6), four-eyes approvals (F7), parallel playbook branches.
+5. OIDC SSO, more source normalizers (OCSF export), more step types (tutorial 03's `isolate_host`).

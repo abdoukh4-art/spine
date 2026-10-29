@@ -1,6 +1,7 @@
 import { pino } from 'pino';
 import { describe, expect, it, vi } from 'vitest';
 import { createSocGaugesTask } from '../../../src/modules/metrics/adapters/gauges.js';
+import { aggregateAlerts, aggregateRuns } from '../../../src/modules/metrics/domain/soc-metrics.js';
 import { ManualClock } from '../../../src/platform/runtime.js';
 
 describe('SOC gauges task', () => {
@@ -9,27 +10,31 @@ describe('SOC gauges task', () => {
   it('computes rolling 24 h values on start and stops cleanly', async () => {
     const task = createSocGaugesTask(
       {
-        alertsReceivedBetween: (w) => {
+        alertStats: (w) => {
           expect(w.to.getTime() - w.from.getTime()).toBe(24 * 3_600_000);
-          return Promise.resolve([
-            {
-              occurredAt: new Date('2026-10-28T11:00:00Z'),
-              receivedAt: new Date('2026-10-28T11:01:00Z'),
-              resolvedAt: new Date('2026-10-28T11:11:00Z'),
-              severity: 'medium',
-            },
-          ]);
+          return Promise.resolve(
+            aggregateAlerts([
+              {
+                occurredAt: new Date('2026-10-28T11:00:00Z'),
+                receivedAt: new Date('2026-10-28T11:01:00Z'),
+                resolvedAt: new Date('2026-10-28T11:11:00Z'),
+                severity: 'medium',
+              },
+            ]),
+          );
         },
-        runsBetween: () =>
-          Promise.resolve([
-            {
-              status: 'succeeded',
-              dryRun: false,
-              startedAt: new Date(),
-              finishedAt: new Date(),
-              approvalWaitMs: 0,
-            },
-          ]),
+        runStats: () =>
+          Promise.resolve(
+            aggregateRuns([
+              {
+                status: 'succeeded',
+                dryRun: false,
+                startedAt: new Date(),
+                finishedAt: new Date(),
+                approvalWaitMs: 0,
+              },
+            ]),
+          ),
       },
       clock,
       pino({ level: 'silent' }),
@@ -44,8 +49,8 @@ describe('SOC gauges task', () => {
     const warn = vi.spyOn(logger, 'warn');
     const task = createSocGaugesTask(
       {
-        alertsReceivedBetween: () => Promise.reject(new Error('db down')),
-        runsBetween: () => Promise.resolve([]),
+        alertStats: () => Promise.reject(new Error('db down')),
+        runStats: () => Promise.resolve(aggregateRuns([])),
       },
       clock,
       logger,

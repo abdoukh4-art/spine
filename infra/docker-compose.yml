@@ -180,6 +180,7 @@ services:
       SPINE_SERVER_NAME: ${SPINE_SERVER_NAME:-localhost}
       SPINE_HSTS_MAX_AGE: ${SPINE_HSTS_MAX_AGE:-0}
       SPINE_REAL_IP_FROM: ${SPINE_REAL_IP_FROM:-127.0.0.1}
+      SPINE_CONN_PER_CLIENT: ${SPINE_CONN_PER_CLIENT:-50}
     volumes:
       - ./tls:/etc/nginx/tls:ro
     tmpfs:

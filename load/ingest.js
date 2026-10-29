@@ -12,7 +12,13 @@
 //                (ADR-0024); counted separately, it's the system protecting itself
 //   429          rate limited: the per-client limit is too low for this test (configuration)
 //   anything else  an error; must stay under 1 %
+//
+// MODE=api (default) posts to POST /api/v1/alerts with an analyst's bearer token. Access tokens
+// expire after AUTH_ACCESS_TTL_SECONDS (15 min by default), so long runs (soaks) use
+// MODE=webhook: HMAC-signed POST /api/v1/ingest/webhooks/:source, which is how sensors send
+// alerts and needs no session (WEBHOOK_SOURCE must use the `canonical` normalizer).
 import { check } from 'k6';
+import crypto from 'k6/crypto';
 import http from 'k6/http';
 import { Counter, Rate, Trend } from 'k6/metrics';
 
@@ -21,6 +27,9 @@ const PEAK_RATE = Number(__ENV.PEAK_RATE || 100); // alerts per second at the pl
 const RAMP = __ENV.RAMP || '1m';
 const HOLD = __ENV.HOLD || '3m';
 const DUPLICATE_RATIO = Number(__ENV.DUPLICATE_RATIO || 0.1); // share of re-sent alerts
+const MODE = __ENV.MODE || 'api'; // 'api' | 'webhook'
+const WEBHOOK_SOURCE = __ENV.WEBHOOK_SOURCE || 'edr';
+const WEBHOOK_SECRET = __ENV.WEBHOOK_SECRET || '';
 
 const backpressure = new Counter('spine_backpressure_503');
 const rateLimited = new Rate('spine_rate_limited');
@@ -139,6 +148,10 @@ export function syntheticAlert(sourceAlertId) {
 
 /** Logs in as the demo analyst unless SPINE_TOKEN is provided. */
 export function setup() {
+  if (MODE === 'webhook') {
+    if (!WEBHOOK_SECRET) throw new Error('MODE=webhook needs WEBHOOK_SECRET for WEBHOOK_SOURCE');
+    return { token: null };
+  }
   if (__ENV.SPINE_TOKEN) return { token: __ENV.SPINE_TOKEN };
   const res = http.post(
     `${BASE_URL}/api/v1/auth/login`,
@@ -171,18 +184,31 @@ export default function ingest(data) {
     if (recentIds.length > 50) recentIds.shift();
   }
 
-  const res = http.post(
-    `${BASE_URL}/api/v1/alerts`,
-    JSON.stringify(syntheticAlert(sourceAlertId)),
-    {
+  const body = JSON.stringify(syntheticAlert(sourceAlertId));
+  let res;
+  if (MODE === 'webhook') {
+    // Same signature as a sensor: HMAC-SHA256 over "<unix seconds>.<raw body>" (ADR-0035).
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const signature = crypto.hmac('sha256', WEBHOOK_SECRET, `${timestamp}.${body}`, 'hex');
+    res = http.post(`${BASE_URL}/api/v1/ingest/webhooks/${WEBHOOK_SOURCE}`, body, {
+      headers: {
+        'content-type': 'application/json',
+        'x-spine-timestamp': timestamp,
+        'x-spine-signature': `sha256=${signature}`,
+        'idempotency-key': `lt-${hex(24)}`,
+      },
+      tags: { name: 'POST /api/v1/ingest/webhooks/:source' },
+    });
+  } else {
+    res = http.post(`${BASE_URL}/api/v1/alerts`, body, {
       headers: {
         'content-type': 'application/json',
         authorization: `Bearer ${data.token}`,
         'idempotency-key': `lt-${hex(24)}`,
       },
       tags: { name: 'POST /api/v1/alerts' },
-    },
-  );
+    });
+  }
 
   if (res.status === 503) backpressure.add(1);
   rateLimited.add(res.status === 429);

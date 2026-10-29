@@ -25,6 +25,7 @@ export interface AuditRecorder {
   record(entry: AuditRecordInput, executor?: Db): Promise<void>;
 }
 
+/** What the auth module offers other modules: request authentication and the audit recorder. */
 export interface AuthPublicApi {
   authenticator: Authenticator;
   audit: AuditRecorder;

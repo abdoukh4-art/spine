@@ -1,4 +1,4 @@
-import type { Alert, AlertStatus, Severity } from '@spine/shared-schema';
+import type { Alert, AlertStatus, DurationStat, Severity } from '@spine/shared-schema';
 import type { DbExecutor } from '../../platform/events/types.js';
 
 export { OpenAlertExistsError } from './application/errors.js';
@@ -39,16 +39,25 @@ export interface AlertsPublicApi {
 
   // ---- reporting (Phase 2, additive) ----
 
-  /** Lifecycle timestamps of alerts received in [from, to), for the Metrics module (ADR-0026). */
-  timesReceivedBetween(from: Date, to: Date): Promise<AlertTimesRow[]>;
+  /**
+   * MTTD, MTTR and volume aggregates over the alerts received in [from, to), computed in the
+   * database so memory doesn't grow with alert volume (ADR-0026, ADR-0095).
+   */
+  statsReceivedBetween(from: Date, to: Date): Promise<AlertStatsRow>;
 }
 
-/** One alert's lifecycle timestamps, as the Metrics module needs them. */
-export interface AlertTimesRow {
-  occurredAt: Date;
-  receivedAt: Date;
-  /** First close time, or null while the alert is open (including after a reopen). */
-  resolvedAt: Date | null;
-  /** Score-derived severity, falling back to the source severity before scoring. */
-  severity: Severity;
+/**
+ * Aggregates of the alerts received in a window, as the Metrics module needs them. Counts per
+ * severity and per UTC day are sparse: only values that occur are listed.
+ */
+export interface AlertStatsRow {
+  total: number;
+  /** Per score-derived severity (falling back to the source severity before scoring). */
+  bySeverity: { severity: Severity; count: number }[];
+  /** Per UTC day of `receivedAt` (`YYYY-MM-DD`), ascending. */
+  byDay: { day: string; count: number }[];
+  /** Time to detect (received − occurred, clamped at 0) and how many were negative. */
+  mttd: DurationStat & { clockSkewCount: number };
+  /** Time to resolve over closed alerts, and how many are still open (incl. reopened). */
+  mttr: DurationStat & { openCount: number };
 }

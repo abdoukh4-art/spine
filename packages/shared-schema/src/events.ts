@@ -66,7 +66,9 @@ export const EventPayloadSchemas = {
   }),
 } as const;
 
+/** Name of a domain event in the catalog (docs/architecture/event-catalog.md), e.g. `alert.scored`. */
 export type EventType = keyof typeof EventPayloadSchemas;
+/** The payload type of event `T`, inferred from its schema in the catalog. */
 export type EventPayload<T extends EventType> = z.infer<(typeof EventPayloadSchemas)[T]>;
 
 /** Envelope for every domain event. */
@@ -80,6 +82,7 @@ export interface DomainEvent<T extends EventType = EventType> {
   traceparent?: string;
 }
 
+/** Every event type in the catalog (handy for exhaustive tests and subscriptions). */
 export const EVENT_TYPES = Object.keys(EventPayloadSchemas) as EventType[];
 
 /** Validates an event payload against the catalog. Throws a ZodError on mismatch. */

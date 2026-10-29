@@ -10,12 +10,17 @@ export const DurationStatSchema = z.object({
 });
 export type DurationStat = z.infer<typeof DurationStatSchema>;
 
+/** `GET /metrics/summary` time window; defaults to the last 7 days when omitted. */
 export const MetricsQuerySchema = z.object({
   from: TimestampSchema.optional(),
   to: TimestampSchema.optional(),
 });
 export type MetricsQuery = z.infer<typeof MetricsQuerySchema>;
 
+/**
+ * SOC metrics for a time window (ADR-0026): alert volume, MTTD, MTTR (with alerts still open),
+ * and playbook outcomes, latency and approval wait.
+ */
 export const MetricsSummarySchema = z.object({
   window: z.object({ from: TimestampSchema, to: TimestampSchema }),
   alertVolume: z.object({

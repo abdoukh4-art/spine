@@ -15,6 +15,7 @@ import {
   ValidationError,
 } from '../../../../platform/errors.js';
 import { requireUser } from '../../../../platform/http/access.js';
+import type { InFlightLimit } from '../../../../platform/http/in-flight-limit.js';
 import type { Clock } from '../../../../platform/runtime.js';
 import type { BackpressureGuard } from '../../application/backpressure.js';
 import type { IngestAlert, IngestOutcome } from '../../application/ingest-alert.js';
@@ -35,6 +36,8 @@ export interface IngestionRouteDeps {
   ingest: IngestAlert;
   batch: IngestBatch;
   guard: BackpressureGuard;
+  /** Per-process cap on concurrent ingest requests (`INGEST_MAX_IN_FLIGHT`, ADR-0093). */
+  inFlight: InFlightLimit;
   metrics: IngestionMetrics;
   clock: Clock;
   webhookSources: Readonly<Record<string, WebhookSource>>;
@@ -109,7 +112,16 @@ export async function registerIngestionRoutes(
   deps: IngestionRouteDeps,
 ): Promise<void> {
   const limits = ingestRateLimits(deps.rateLimitPerMinute ?? INGEST_RATE_LIMIT_PER_MINUTE);
-  const shed = async (): Promise<void> => {
+  const shed = async (_req: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    // 1. Concurrency: beyond the cap, answer at once instead of queueing for a DB connection.
+    const release = deps.inFlight.tryAcquire();
+    if (!release) {
+      deps.metrics.backpressureRejected();
+      throw new OverloadedError('too many concurrent ingest requests; retry shortly', 1);
+    }
+    // 'close' fires once the response is sent OR the client went away: the slot is never leaked.
+    reply.raw.once('close', release);
+    // 2. Backlog: the asynchronous pipeline can't absorb more right now.
     try {
       await deps.guard.check();
     } catch (error) {
@@ -190,7 +202,7 @@ const WebhookParams = z.object({ sourceId: z.string().regex(/^[a-z0-9-]{1,64}$/)
 function registerWebhookRoute(
   scope: FastifyInstance,
   deps: IngestionRouteDeps,
-  shed: () => Promise<void>,
+  shed: (req: FastifyRequest, reply: FastifyReply) => Promise<void>,
 ): void {
   scope.removeAllContentTypeParsers();
   scope.addContentTypeParser('*', { parseAs: 'string' }, (_req, body, done) => {

@@ -10,6 +10,7 @@ export type Timestamp = z.infer<typeof TimestampSchema>;
 
 /** Severity levels, ordered from least to most severe. */
 export const SEVERITIES = ['informational', 'low', 'medium', 'high', 'critical'] as const;
+/** Validates a {@link SEVERITIES} value. */
 export const SeveritySchema = z.enum(SEVERITIES);
 export type Severity = z.infer<typeof SeveritySchema>;
 
@@ -20,6 +21,7 @@ export function severityRank(severity: Severity): number {
 
 /** RBAC roles, hierarchical: viewer < analyst < admin (ADR-0017). */
 export const ROLES = ['viewer', 'analyst', 'admin'] as const;
+/** Validates a {@link ROLES} value. */
 export const RoleSchema = z.enum(ROLES);
 export type Role = z.infer<typeof RoleSchema>;
 
@@ -42,6 +44,7 @@ export function pageSchema<T extends z.ZodType>(item: T) {
     nextCursor: z.string().nullable(),
   });
 }
+/** A page of results with the opaque cursor for the next one (`null` on the last page). */
 export interface Page<T> {
   items: T[];
   nextCursor: string | null;

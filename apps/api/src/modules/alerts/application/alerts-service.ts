@@ -1,4 +1,4 @@
-import type { AlertTimesRow } from '../public-api.js';
+import type { AlertStatsRow } from '../public-api.js';
 import type {
   Alert,
   AlertDetail,
@@ -68,8 +68,8 @@ export class AlertsService implements AlertsPublicApi {
 
   /** Lists alerts with filters and keyset pagination (ADR-0024, ADR-0037). */
   /** Reporting read model for the Metrics module (ADR-0026). */
-  timesReceivedBetween(from: Date, to: Date): Promise<AlertTimesRow[]> {
-    return this.deps.alerts.timesReceivedBetween(from, to);
+  statsReceivedBetween(from: Date, to: Date): Promise<AlertStatsRow> {
+    return this.deps.alerts.statsReceivedBetween(from, to);
   }
 
   list(query: AlertListQuery): Promise<Page<AlertSummary>> {

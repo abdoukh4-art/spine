@@ -10,7 +10,7 @@
 
 Spine ingests alerts from detection tools, enriches and scores them with **explainable** rules, and
 runs **durable, approval-gated playbooks** through **simulated** integrations. It is built as a
-production-style system _and_ as a learning resource: 70+ architecture decision records, module
+production-style system _and_ as a learning resource: 75+ architecture decision records, module
 guides with exercises, three hands-on tutorials, and an honest engineering journal (including the
 bugs).
 
@@ -95,20 +95,20 @@ C4 diagrams, sequence diagrams, the ERD and the event catalog: [docs/architectur
 
 ## Quality, measured
 
-|             |                                                                                                                                                                                     |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Tests       | 745 unit/property tests (Vitest + fast-check), 150 integration tests (Testcontainers Postgres + Redis), OpenAPI contract tests, 4 Playwright journeys with axe accessibility checks |
-| Coverage    | playbook-engine 99.6 % lines, enrichers 99.5 %, shared-schema 98.9 %, domain folders 98–100 %                                                                                       |
-| Performance | 200 alerts/s accepted with 0 errors, p95 167 ms; ingest → scored p95 125 ms at 20/s (one 4-core host, [details](docs/operations/performance.md))                                    |
-| Security    | adversarial review with 7 findings (5 fixed, 2 accepted) ([report](docs/security/review-2026-10-28.md)); CodeQL, gitleaks, pnpm audit, Trivy on both images, SBOM in CI             |
-| CI          | 17 required checks including a full-stack e2e job ([ADR-0025](docs/adr/0025-git-workflow-and-ci-gates.md))                                                                          |
+|             |                                                                                                                                                                                                                                       |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tests       | 762 unit/property tests (Vitest + fast-check), 163 integration tests (Testcontainers Postgres + Redis) incl. OpenAPI contract, DB-role attack and SQL-vs-spec differential tests, 4 Playwright journeys with axe accessibility checks |
+| Coverage    | API 95.6 % lines over unit + integration (CI gate 90 %), playbook-engine 99.6 %, enrichers 100 %, shared-schema 97.4 %, domain folders 98–100 % (gate 85 %)                                                                           |
+| Performance | 250 alerts/s offered: 0 errors, accepted p95 354 ms, excess shed with `503 + Retry-After`; sustained pipeline ≈ 45 alerts/s; ingest → scored p95 125 ms at 20/s (one shared 4-core host, [details](docs/operations/performance.md))   |
+| Security    | adversarial review with 7 findings (5 fixed, 2 accepted) ([report](docs/security/review-2026-10-28.md)); CodeQL, gitleaks, pnpm audit, Trivy on both images, SBOM in CI                                                               |
+| CI          | 17 required checks including a full-stack e2e job ([ADR-0025](docs/adr/0025-git-workflow-and-ci-gates.md))                                                                                                                            |
 
 ## Learn from it
 
 Start at the **[documentation hub](docs/README.md)**, which has a step-by-step learning path:
 
 - 🎯 [Vision](docs/00-vision.md) · 🛡️ [Domain primer: SOC, SIEM vs SOAR, ATT&CK, MTTD/MTTR](docs/01-domain-primer.md) · [Glossary](docs/glossary.md)
-- 🏗️ [Architecture](docs/architecture/README.md) · 📝 [70+ ADRs](docs/adr/README.md) · 📚 [Reading list](docs/reading-list.md)
+- 🏗️ [Architecture](docs/architecture/README.md) · 📝 [75+ ADRs](docs/adr/README.md) · 📚 [Reading list](docs/reading-list.md)
 - 🧩 [Module guides with exercises](docs/modules/README.md) · 🛠️ Tutorials: [a scoring rule](docs/tutorials/01-write-a-scoring-rule.md), [an enricher](docs/tutorials/02-write-an-enricher.md), [a playbook step](docs/tutorials/03-write-a-playbook-step.md)
 - 🔐 [Security](docs/security/README.md) · ⚙️ [Operations](docs/operations/README.md) · 🧪 [Testing strategy](docs/testing/strategy.md)
 - 📓 [Engineering journal](docs/journal/README.md): what broke and how it was debugged
@@ -140,7 +140,7 @@ v0.1 is complete for its scope. What's done, stubbed and known-broken is listed 
 [docs/STATUS.md](docs/STATUS.md). Next steps:
 
 - async batch imports and four-eyes approvals (security review F6, F7);
-- `LISTEN/NOTIFY` outbox wake-ups and slimmer queue payloads ([ADR-0090](docs/adr/0090-load-test-fixes-retention-fail-open-poll-interval.md)), a load-test soak and a multi-host run;
+- `LISTEN/NOTIFY` outbox wake-ups and slimmer queue payloads ([ADR-0090](docs/adr/0090-load-test-fixes-retention-fail-open-poll-interval.md)), and a load test on separate hosts;
 - parallel playbook branches, a visual playbook editor on top of the DSL, OIDC SSO;
 - more source normalizers (OCSF export), more step types (tutorial 03's `isolate_host`).
 

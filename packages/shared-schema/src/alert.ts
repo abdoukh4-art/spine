@@ -6,6 +6,10 @@ import { IdSchema, SeveritySchema, TimestampSchema } from './common.js';
  * `CanonicalAlertInput` at the edge; downstream modules only ever see this shape.
  */
 
+/**
+ * What kind of activity an alert reports. Normalizers map vendor categories onto this closed list
+ * (ADR-0011); scoring rules and playbook triggers match on it. `other` when nothing fits.
+ */
 export const ALERT_CATEGORIES = [
   'malware',
   'phishing',
@@ -19,9 +23,11 @@ export const ALERT_CATEGORIES = [
   'vulnerability',
   'other',
 ] as const;
+/** Validates an {@link ALERT_CATEGORIES} value. */
 export const AlertCategorySchema = z.enum(ALERT_CATEGORIES);
 export type AlertCategory = z.infer<typeof AlertCategorySchema>;
 
+/** Kinds of observable Spine extracts and enriches (IPs, domains, hashes, identities). */
 export const INDICATOR_TYPES = [
   'ipv4',
   'ipv6',
@@ -34,6 +40,7 @@ export const INDICATOR_TYPES = [
   'hostname',
   'username',
 ] as const;
+/** Validates an {@link INDICATOR_TYPES} value. */
 export const IndicatorTypeSchema = z.enum(INDICATOR_TYPES);
 export type IndicatorType = z.infer<typeof IndicatorTypeSchema>;
 
@@ -60,6 +67,7 @@ const ShortText = z.string().max(512);
 const IpSchema = z.union([z.ipv4(), z.ipv6()]);
 const PortSchema = z.number().int().min(0).max(65535);
 
+/** Which product reported the alert, and its ID there (used for deduplication). */
 export const AlertSourceSchema = z.object({
   vendor: z.string().min(1).max(100),
   product: z.string().min(1).max(100),
@@ -68,15 +76,18 @@ export const AlertSourceSchema = z.object({
 });
 export type AlertSource = z.infer<typeof AlertSourceSchema>;
 
+/** The host the alert is about: name, addresses and operating system, as reported. */
 export const HostSchema = z.object({
   hostname: z.string().max(255).optional(),
   ips: z.array(IpSchema).max(32).optional(),
   os: ShortText.optional(),
 });
+/** The user account involved, by name and/or email. */
 export const UserRefSchema = z.object({
   name: z.string().max(255).optional(),
   email: z.email().optional(),
 });
+/** The network flow involved (source/destination address and port, protocol). */
 export const NetworkSchema = z.object({
   sourceIp: IpSchema.optional(),
   sourcePort: PortSchema.optional(),
@@ -84,6 +95,7 @@ export const NetworkSchema = z.object({
   destinationPort: PortSchema.optional(),
   protocol: z.string().max(32).optional(),
 });
+/** A file involved in the alert; hashes are validated hex so enrichers can look them up. */
 export const FileRefSchema = z.object({
   name: z.string().max(1024).optional(),
   path: z.string().max(4096).optional(),
@@ -100,7 +112,11 @@ export const FileRefSchema = z.object({
 /** Maximum size of the preserved raw payload, in bytes of JSON (ADR-0011). */
 export const RAW_PAYLOAD_MAX_BYTES = 64 * 1024;
 
-/** What a client submits (or what a normalizer produces). */
+/**
+ * What a client submits (or what a normalizer produces): the canonical alert before Spine assigns
+ * identity and lifecycle fields. Bounded everywhere (lengths, array sizes) so one alert can't
+ * exhaust memory.
+ */
 export const CanonicalAlertInputSchema = z.object({
   source: AlertSourceSchema,
   title: z.string().min(1).max(512),
@@ -123,6 +139,10 @@ export type CanonicalAlertInput = z.input<typeof CanonicalAlertInputSchema>;
 /** Parsed canonical alert (defaults applied). */
 export type CanonicalAlert = z.infer<typeof CanonicalAlertInputSchema>;
 
+/**
+ * Lifecycle of an alert in the queue. `resolved` and `false_positive` are closed states
+ * ({@link CLOSED_ALERT_STATUSES}); MTTR ends at the first close (ADR-0026).
+ */
 export const ALERT_STATUSES = [
   'new',
   'triaged',
@@ -130,9 +150,11 @@ export const ALERT_STATUSES = [
   'resolved',
   'false_positive',
 ] as const;
+/** Validates an {@link ALERT_STATUSES} value. */
 export const AlertStatusSchema = z.enum(ALERT_STATUSES);
 export type AlertStatus = z.infer<typeof AlertStatusSchema>;
 
+/** Statuses that close an alert (and stop the MTTR clock). */
 export const CLOSED_ALERT_STATUSES: readonly AlertStatus[] = ['resolved', 'false_positive'];
 
 /** Allowed status transitions (see docs/architecture/api-contract.md). */

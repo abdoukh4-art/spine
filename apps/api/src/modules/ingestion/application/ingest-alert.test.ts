@@ -22,8 +22,8 @@ class FakeAlerts implements AlertsPublicApi {
   get(id: string) {
     return Promise.resolve(this.byId.get(id) ?? null);
   }
-  timesReceivedBetween() {
-    return Promise.resolve([]);
+  statsReceivedBetween(): never {
+    throw new Error('reporting is not used by ingestion');
   }
   setStatus(): Promise<void> {
     return Promise.resolve();

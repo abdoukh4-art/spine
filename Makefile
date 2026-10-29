@@ -13,8 +13,8 @@ help: ## Show this help
 install: .env ## Install dependencies
 	pnpm install --frozen-lockfile
 
-check: ## Lint, architecture rules, typecheck, unit tests, docs checks
-	pnpm lint && pnpm lint:arch && pnpm typecheck && pnpm test && pnpm docs:check
+check: ## Lint, architecture rules, TSDoc, typecheck, unit tests, docs checks
+	pnpm lint && pnpm lint:arch && pnpm check:tsdoc && pnpm typecheck && pnpm test && pnpm docs:check
 
 test: ## Unit + property tests
 	pnpm test

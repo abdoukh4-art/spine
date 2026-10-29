@@ -1,4 +1,7 @@
+import { pipelineBacklogProbe } from '../../platform/events/backlog.js';
 import { outboxBacklog } from '../../platform/events/outbox.js';
+import { eventQueueCounter } from '../../platform/queue/bullmq.js';
+import { InFlightLimit } from '../../platform/http/in-flight-limit.js';
 import type { PlatformDeps, SpineModule } from '../../platform/module.js';
 import type { AlertsPublicApi } from '../alerts/public-api.js';
 import { registerIngestionRoutes } from './adapters/http/routes.js';
@@ -35,7 +38,10 @@ export function createIngestionModule(
     ids: deps.ids,
   });
   const guard = new BackpressureGuard({
-    probe: () => outboxBacklog(deps.db),
+    probe: pipelineBacklogProbe({
+      outbox: () => outboxBacklog(deps.db),
+      queue: deps.redis ? eventQueueCounter(deps.redis) : null,
+    }),
     clock: deps.clock,
     maxBacklog: deps.config.INGEST_MAX_BACKLOG,
   });
@@ -54,6 +60,7 @@ export function createIngestionModule(
           ingest,
           batch: new IngestBatch(ingest),
           guard,
+          inFlight: new InFlightLimit(deps.config.INGEST_MAX_IN_FLIGHT),
           metrics,
           clock: deps.clock,
           webhookSources: deps.config.WEBHOOK_SOURCES_JSON,
