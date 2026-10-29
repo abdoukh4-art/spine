@@ -168,6 +168,62 @@ describe('reading', () => {
   });
 });
 
+describe('sparse data', () => {
+  it('get_alert handles an unscored alert with no host, user, file or labels', async () => {
+    const detail = alertDetail();
+    const { host: _h, ...bare } = detail.alert;
+    const { client } = await connect({
+      [`GET /api/v1/alerts/${ALERT_ID}`]: () => ({
+        status: 200,
+        body: {
+          ...detail,
+          alert: {
+            ...bare,
+            title: 'Short title',
+            description: undefined,
+            labels: {},
+            raw: undefined,
+          },
+          score: null,
+          enrichments: [],
+        },
+      }),
+    });
+    const body = json(
+      await client.callTool({ name: 'get_alert', arguments: { alertId: ALERT_ID } }),
+    );
+    expect(body).toMatchObject({
+      score: null,
+      enrichments: [],
+      sensorData: {
+        title: 'Short title',
+        description: null,
+        host: null,
+        user: null,
+        file: null,
+        url: null,
+        labels: {},
+      },
+    });
+  });
+
+  it('reports a non-JSON error page (e.g. from a proxy) with its status', async () => {
+    const spine = new SpineClient({
+      baseUrl: 'http://spine.test',
+      email: 'ai-analyst@spine.test',
+      password: 'pw',
+      timeoutMs: 1_000,
+      fetch: (() =>
+        Promise.resolve(
+          new Response('<html>502 Bad Gateway</html>', { status: 502, statusText: 'Bad Gateway' }),
+        )) as typeof fetch,
+    });
+    await expect(spine.get('/api/v1/alerts', alertSummarySchemaLike)).rejects.toThrow(
+      /502: Bad Gateway/,
+    );
+  });
+});
+
 describe('acting, within limits', () => {
   it('set_alert_status can triage but cannot close an alert', async () => {
     const { client, spineApi } = await connect({
