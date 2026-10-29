@@ -1,0 +1,29 @@
+{
+  "name": "@spine/mcp",
+  "version": "0.0.0",
+  "private": true,
+  "description": "MCP server that lets an AI analyst (e.g. Claude) triage alerts through Spine's public API, with human-approval guardrails",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "spine-mcp": "./dist/main.js"
+  },
+  "scripts": {
+    "dev": "tsx --env-file-if-exists=../../.env src/main.ts",
+    "start": "node dist/main.js",
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.3.1",
+    "@spine/shared-schema": "workspace:*",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.3.1",
+    "esbuild": "0.25.12",
+    "tsx": "4.20.6"
+  }
+}

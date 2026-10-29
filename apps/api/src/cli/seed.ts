@@ -179,6 +179,15 @@ async function main(): Promise<void> {
         role: 'viewer',
         password: process.env.SPINE_DEMO_VIEWER_PASSWORD ?? 'night-owl-demo-victor-2026',
       },
+      {
+        // The AI analyst's own account (MCP server, ADR-0096): a separate identity, so the audit
+        // log shows exactly what the agent did, and the four-eyes rule stops it approving its
+        // own proposals.
+        email: 'ai-analyst@spine.test',
+        displayName: 'AI Analyst (MCP)',
+        role: 'analyst',
+        password: process.env.SPINE_DEMO_AI_PASSWORD ?? 'night-owl-demo-claude-2026',
+      },
     ]);
     logger.info({ created }, 'seed: demo users ensured');
 
