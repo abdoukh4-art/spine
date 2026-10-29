@@ -1,0 +1,13 @@
+packages:
+  - apps/*
+  - packages/*
+  - e2e
+
+# Supply-chain defence (ADR-0022): only these packages may run install scripts.
+onlyBuiltDependencies:
+  - '@node-rs/argon2'
+  - esbuild
+  - cpu-features
+  - ssh2
+  - protobufjs
+  - msgpackr-extract

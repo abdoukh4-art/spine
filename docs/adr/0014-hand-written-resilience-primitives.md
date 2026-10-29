@@ -37,7 +37,7 @@ bulkhead(maxConcurrent, maxQueue)        → reject fast when saturated
                  └─ provider.lookup(indicator, { signal })
 ```
 
-- **Why this order?** The bulkhead outermost bounds total concurrency *including retries*.
+- **Why this order?** The bulkhead outermost bounds total concurrency _including retries_.
   The breaker sits outside retry so that one logical call counts once toward the failure
   rate, and an open breaker short-circuits all retries. The timeout is per attempt, so
   retry can recover from a single slow attempt.
@@ -63,11 +63,13 @@ bulkhead(maxConcurrent, maxQueue)        → reject fast when saturated
 ## Pros and cons of the options
 
 ### opossum + p-retry + p-limit
+
 - 👍 Battle-tested.
 - 👎 Three libraries with different idioms. opossum's timeout doesn't abort the
   underlying call (it lets it run on), and it's harder to inject a fake clock.
 
 ### cockatiel
+
 - 👍 A coherent policy API, and it supports `AbortSignal`.
 - 👎 Hides the mechanics we want to teach. A reasonable future swap; the interfaces are close.
 
@@ -78,6 +80,6 @@ bulkhead(maxConcurrent, maxQueue)        → reject fast when saturated
 
 ## Further reading
 
-- Michael Nygard, *Release It!* 2nd ed., ch. 5 "Stability Patterns"
-- Marc Brooker, *Exponential Backoff And Jitter* (AWS Architecture Blog, 2015)
-- Microsoft, *Circuit Breaker pattern* (Azure Architecture Center)
+- Michael Nygard, _Release It!_ 2nd ed., ch. 5 "Stability Patterns"
+- Marc Brooker, _Exponential Backoff And Jitter_ (AWS Architecture Blog, 2015)
+- Microsoft, _Circuit Breaker pattern_ (Azure Architecture Center)

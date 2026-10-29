@@ -14,10 +14,10 @@ Ingestion ──alert.ingested──▶ Enrichment ──alert.enriched──▶
                     └────────▶ Alerts (projection)                         └──────────▶ Alerts (projection)
 ```
 
-If Ingestion wrote the alert and then *directly called* Enrichment, a crash between the two
-steps would lose the enrichment forever. Publishing to a queue *after* the DB commit has
+If Ingestion wrote the alert and then _directly called_ Enrichment, a crash between the two
+steps would lose the enrichment forever. Publishing to a queue _after_ the DB commit has
 the same "dual write" problem: the commit succeeds, the publish fails, and the event is lost.
-Publishing *before* the commit can emit an event for data that then rolls back.
+Publishing _before_ the commit can emit an event for data that then rolls back.
 
 ## Decision drivers
 
@@ -65,18 +65,22 @@ dispatches synchronously, so module tests don't need Redis.
 ## Pros and cons of the options
 
 ### In-process EventEmitter
+
 - 👍 Trivial.
 - 👎 Events are lost on a crash, there's no retry, and one slow handler blocks the request.
 
 ### Publish after commit
+
 - 👍 Simple.
 - 👎 The classic dual-write bug: a crash between commit and publish loses the event.
 
 ### LISTEN/NOTIFY
+
 - 👍 Low latency.
 - 👎 Notifications are not persisted, so missed while disconnected. Still needs an outbox table underneath.
 
 ### Debezium CDC
+
 - 👍 Zero polling, and the canonical enterprise answer.
 - 👎 Kafka + Kafka Connect cluster: massive operational overhead for this project.
 
@@ -87,5 +91,5 @@ dispatches synchronously, so module tests don't need Redis.
 
 ## Further reading
 
-- Chris Richardson, *Pattern: Transactional outbox* (microservices.io)
-- Gregor Hohpe & Bobby Woolf, *Enterprise Integration Patterns*, "Idempotent Receiver"
+- Chris Richardson, _Pattern: Transactional outbox_ (microservices.io)
+- Gregor Hohpe & Bobby Woolf, _Enterprise Integration Patterns_, "Idempotent Receiver"

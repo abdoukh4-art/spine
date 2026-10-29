@@ -1,6 +1,6 @@
 # ADR-NNNN: <short title in imperative or noun phrase>
 
-- **Status:** proposed | accepted | superseded by [ADR-XXXX](XXXX-title.md) | deprecated
+- **Status:** proposed | accepted | superseded by ADR-XXXX (link it) | deprecated
 - **Date:** YYYY-MM-DD
 - **Deciders:** <who>
 - **Tags:** <architecture | security | data | testing | ops | frontend | process>

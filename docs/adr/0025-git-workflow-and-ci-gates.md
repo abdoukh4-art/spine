@@ -34,6 +34,10 @@ and a definition of "mergeable" that a machine enforces.
 - Branch names: `feat/<module>`, `fix/<topic>`, `docs/<topic>`, `chore/<topic>`.
 - Commits follow **Conventional Commits 1.0** (`feat(ingestion): add CEF normalizer`),
   enforced by commitlint locally (husky `commit-msg`) and in CI on PR commits.
+  _Update 2026-10-29:_ merge commits are exempt (they aren't Conventional Commits). commitlint
+  ignores Git's own merge wording, and `commitlint.config.js` also ignores the hand-written
+  `Merge PR #N: …` subjects from Phase 1. The release PR's commitlint check caught them, and
+  shared history isn't rewritten.
 - **Required status checks** (configure as branch protection on `develop` and `main`):
   `lint`, `typecheck`, `arch`, `test-unit`, `test-integration`, `contract`, `build`,
   `docs-links`, `commitlint`, `codeql`, `gitleaks`, `deps-audit`, `docker-build-scan`.
@@ -52,10 +56,12 @@ and a definition of "mergeable" that a machine enforces.
 ## Pros and cons of the options
 
 ### Trunk-based
+
 - 👍 The fastest integration, and favoured by DORA research.
 - 👎 Needs feature flags and very mature CI from day one. The mission specifies develop + release PR.
 
 ### Full git-flow
+
 - 👎 Release/hotfix branches are ceremony with no benefit for a single-deployable project.
 
 ## What would make us revisit this
@@ -66,5 +72,5 @@ and a definition of "mergeable" that a machine enforces.
 ## Further reading
 
 - Conventional Commits 1.0.0 specification
-- *Accelerate*, Forsgren, Humble, Kim (2018): trunk-based development findings
+- _Accelerate_, Forsgren, Humble, Kim (2018): trunk-based development findings
 - release-please documentation

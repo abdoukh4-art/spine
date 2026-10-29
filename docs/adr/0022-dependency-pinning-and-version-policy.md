@@ -1,6 +1,6 @@
 # ADR-0022: Pin exact dependency versions; prefer mature releases over newest majors
 
-- **Status:** accepted
+- **Status:** accepted, amended by [ADR-0028](0028-security-patches-override-version-maturity.md)
 - **Date:** 2026-10-28
 - **Deciders:** maintainers
 - **Tags:** security, process
@@ -20,7 +20,7 @@ ESLint 10) only weeks or months old.
 
 ## Considered options
 
-1. **Exact versions in every `package.json` (`save-exact=true`), committed `pnpm-lock.yaml`, `--frozen-lockfile` in CI, latest *stable minor of the previous mature major* where a new major is less than 3 months old, Dependabot weekly grouped updates**
+1. **Exact versions in every `package.json` (`save-exact=true`), committed `pnpm-lock.yaml`, `--frozen-lockfile` in CI, latest _stable minor of the previous mature major_ where a new major is less than 3 months old, Dependabot weekly grouped updates**
 2. Caret ranges (`^1.2.3`) with the lockfile only
 3. Always the latest versions
 
@@ -51,5 +51,5 @@ browser build available in the dev container).
 
 ## Further reading
 
-- OpenSSF, *Concise Guide for Evaluating Open Source Software*
-- pnpm docs, *onlyBuiltDependencies*
+- OpenSSF, _Concise Guide for Evaluating Open Source Software_
+- pnpm docs, _onlyBuiltDependencies_

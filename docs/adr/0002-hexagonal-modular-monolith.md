@@ -49,7 +49,7 @@ apps/api/src/
 Rules (enforced by dependency-cruiser, see [ADR-0020](0020-enforce-module-boundaries.md)):
 
 1. `domain/` may import only from `domain/` of the same module and from `@spine/shared-schema` types.
-2. `application/` may import from `domain/` and from platform *ports* (interfaces), never from adapters.
+2. `application/` may import from `domain/` and from platform _ports_ (interfaces), never from adapters.
 3. A module may import another module **only through its `public-api.ts`**.
 4. Cross-module workflows go through **domain events** ([ADR-0009](0009-domain-events-transactional-outbox.md)),
    not direct calls, whenever eventual consistency is acceptable.
@@ -58,19 +58,19 @@ Rules (enforced by dependency-cruiser, see [ADR-0020](0020-enforce-module-bounda
 
 Bounded contexts and their ownership:
 
-| Context | Owns (data) | Publishes events | Consumes events |
-|---|---|---|---|
-| Ingestion | `idempotency_keys`, normalizers | `alert.ingested`, `alert.deduplicated` | — |
-| Alerts/Cases | `alerts`, `cases` | `alert.status_changed`, `case.*` | `alert.ingested`, `alert.scored` |
-| Enrichment | `alert_enrichments` | `alert.enriched` | `alert.ingested` |
-| Scoring | `alert_scores`, ruleset | `alert.scored` | `alert.enriched` |
-| Playbooks | `playbooks`, `playbook_runs`, `playbook_run_events`, `approvals` | `playbook.run.*`, `approval.*` | `alert.scored` |
-| Auth | `users`, `refresh_tokens`, `audit_log` | `user.*` | — |
-| Metrics | read-only projections | — | queries other modules' public APIs |
+| Context      | Owns (data)                                                      | Publishes events                       | Consumes events                    |
+| ------------ | ---------------------------------------------------------------- | -------------------------------------- | ---------------------------------- |
+| Ingestion    | `idempotency_keys`, normalizers                                  | `alert.ingested`, `alert.deduplicated` | —                                  |
+| Alerts/Cases | `alerts`, `cases`                                                | `alert.status_changed`, `case.*`       | `alert.ingested`, `alert.scored`   |
+| Enrichment   | `alert_enrichments`                                              | `alert.enriched`                       | `alert.ingested`                   |
+| Scoring      | `alert_scores`, ruleset                                          | `alert.scored`                         | `alert.enriched`                   |
+| Playbooks    | `playbooks`, `playbook_runs`, `playbook_run_events`, `approvals` | `playbook.run.*`, `approval.*`         | `alert.scored`                     |
+| Auth         | `users`, `refresh_tokens`, `audit_log`                           | `user.*`                               | —                                  |
+| Metrics      | read-only projections                                            | —                                      | queries other modules' public APIs |
 
 ### Consequences
 
-- 👍 One deploy and one database, with the *boundaries* of microservices. Extracting a
+- 👍 One deploy and one database, with the _boundaries_ of microservices. Extracting a
   module into a service later is mostly mechanical: swap in-process events for a broker.
 - 👍 Domain tests run with in-memory fakes, so they're fast and deterministic.
 - 👎 More files and mapping code (DTO ↔ domain ↔ row) than a CRUD app. We accept this
@@ -82,6 +82,7 @@ Bounded contexts and their ownership:
 ## Pros and cons of the options
 
 ### Microservices
+
 - 👍 Independent deploys and scaling, plus technology freedom.
 - 👎 Network failures between every context, distributed transactions, N pipelines, N
   dashboards. Far too much operational cost for the expected load (hundreds of alerts/s)
@@ -89,11 +90,13 @@ Bounded contexts and their ownership:
   know your boundaries".
 
 ### Layered monolith
+
 - 👍 Familiar and quick to start.
 - 👎 Organized by technical layer, so one feature touches every folder, and nothing
   stops `AlertService` from calling `UserRepository`. Boundaries erode.
 
 ### Serverless
+
 - 👍 No servers to manage.
 - 👎 Durable playbook execution, long-lived workers and local offline development are all
   awkward. Vendor lock-in conflicts with "self-hostable".
@@ -108,8 +111,8 @@ Bounded contexts and their ownership:
 
 ## Further reading
 
-- Alistair Cockburn, *Hexagonal Architecture* (2005)
-- Simon Brown, *Modular Monoliths* (talk, 2018)
-- Kamil Grzybek, *Modular Monolith: A Primer* (2019)
-- Eric Evans, *Domain-Driven Design* (2003), chapters on Bounded Context and Context Map
-- Shopify Engineering, *Deconstructing the Monolith* (2019)
+- Alistair Cockburn, _Hexagonal Architecture_ (2005)
+- Simon Brown, _Modular Monoliths_ (talk, 2018)
+- Kamil Grzybek, _Modular Monolith: A Primer_ (2019)
+- Eric Evans, _Domain-Driven Design_ (2003), chapters on Bounded Context and Context Map
+- Shopify Engineering, _Deconstructing the Monolith_ (2019)

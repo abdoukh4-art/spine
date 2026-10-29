@@ -1,0 +1,67 @@
+# Spine worker (outbox relay, event handlers, playbook executor) as a hardened systemd
+# service. Same release and environment file as spine-api.service; see that file and
+# docs/operations/deployment.md#systemd for the layout.
+#
+# The worker exposes Prometheus metrics on METRICS_PORT. When API and worker share a host,
+# give the worker a different port (the API uses 9464), as done below.
+[Unit]
+Description=Spine SOAR worker
+Documentation=https://github.com/abdoukh4-art/spine/blob/main/docs/operations/deployment.md
+After=network-online.target spine-migrate.service postgresql.service redis-server.service spine-api.service
+Wants=network-online.target
+# Migrations run first, as the owner, in their own unit (ADR-0092).
+Requires=spine-migrate.service
+# Give up after 5 crashes in 60 s instead of restart-looping forever.
+StartLimitIntervalSec=60s
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=spine
+Group=spine
+WorkingDirectory=/opt/spine
+EnvironmentFile=/etc/spine/spine.env
+Environment=NODE_ENV=production SERVICE_NAME=spine-worker METRICS_PORT=9465 MIGRATE_ON_START=false CONFIG_DIR=/opt/spine/config
+ExecStart=/usr/bin/node --enable-source-maps --import ./dist/instrument.js dist/worker.js
+
+# The worker drains in-flight jobs on SIGTERM (BullMQ worker.close()); keep the stop
+# timeout above SHUTDOWN_TIMEOUT_MS (15 s default).
+KillSignal=SIGTERM
+TimeoutStopSec=30s
+Restart=on-failure
+RestartSec=2s
+
+MemoryMax=768M
+MemoryHigh=640M
+TasksMax=256
+LimitNOFILE=65536
+
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+ProcSubset=pid
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RemoveIPC=yes
+UMask=0077
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+MemoryDenyWriteExecute=no
+
+[Install]
+WantedBy=multi-user.target

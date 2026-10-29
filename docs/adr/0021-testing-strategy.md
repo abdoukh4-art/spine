@@ -28,14 +28,14 @@ test, at a cost proportional to the confidence it buys.
 
 **Chosen option 1.**
 
-| Layer | Tool | Scope | Runs |
-|---|---|---|---|
-| Unit | Vitest | domain, application (with in-memory fakes), packages | every commit, < 30 s |
-| Property | fast-check in Vitest | scoring invariants, predicate interpreter, DAG validation, run reducer, resilience primitives | every commit |
-| Integration | Vitest + Testcontainers (Postgres 16, Redis 7) | repositories, migrator, outbox relay, BullMQ workers, HTTP routes via `app.inject` | every PR |
-| Contract | Vitest + Ajv against generated `openapi.json` | every documented route: real responses validated against the spec | every PR |
-| E2E | Playwright (Chromium) + axe-core | login → queue → alert detail → approve → run timeline | every PR (compose stack) |
-| Load | k6 | ingestion throughput / latency | manually + nightly, results in docs |
+| Layer       | Tool                                           | Scope                                                                                         | Runs                                |
+| ----------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------- | ----------------------------------- |
+| Unit        | Vitest                                         | domain, application (with in-memory fakes), packages                                          | every commit, < 30 s                |
+| Property    | fast-check in Vitest                           | scoring invariants, predicate interpreter, DAG validation, run reducer, resilience primitives | every commit                        |
+| Integration | Vitest + Testcontainers (Postgres 16, Redis 7) | repositories, migrator, outbox relay, BullMQ workers, HTTP routes via `app.inject`            | every PR                            |
+| Contract    | Vitest + Ajv against generated `openapi.json`  | every documented route: real responses validated against the spec                             | every PR                            |
+| E2E         | Playwright (Chromium) + axe-core               | login → queue → alert detail → approve → run timeline                                         | every PR (compose stack)            |
+| Load        | k6                                             | ingestion throughput / latency                                                                | manually + nightly, results in docs |
 
 **Testcontainers fallback:** if `TEST_DATABASE_URL` / `TEST_REDIS_URL` are set, the
 integration harness uses those servers instead of starting containers (CI service
@@ -46,6 +46,8 @@ Each test file gets an isolated schema (`CREATE SCHEMA test_<random>`) so files 
 **Coverage gates** (`vitest --coverage`, v8): ≥ 85 % lines/branches for
 `packages/playbook-engine`, `packages/enrichers`, `packages/shared-schema` and
 `apps/api/src/modules/*/domain`. ≥ 70 % for the whole API. CI fails below the threshold.
+_Update 2026-10-29: the API gates weren't actually configured until [ADR-0091](0091-combined-unit-and-integration-coverage.md),
+which also measures the API over unit + integration tests (gate 90 % lines / 80 % branches)._
 
 **Conventions:** test names state behaviour ("rejects a playbook whose graph has a cycle"),
 Arrange-Act-Assert, no sleeping in tests (fake timers and injectable clocks), fixtures in
@@ -60,10 +62,12 @@ Arrange-Act-Assert, no sleeping in tests (fake timers and injectable clocks), fi
 ## Pros and cons of the options
 
 ### Jest + Cypress
+
 - 👍 Popular.
 - 👎 Jest ESM/TS support is clunkier than Vitest's. Cypress is slower and single-browser-tab oriented.
 
 ### E2E only
+
 - 👎 Slow, flaky, and poor at locating failures. The inverted "ice-cream cone" anti-pattern.
 
 ## What would make us revisit this
@@ -73,6 +77,6 @@ Arrange-Act-Assert, no sleeping in tests (fake timers and injectable clocks), fi
 
 ## Further reading
 
-- Mike Cohn, *Succeeding with Agile* (the test pyramid)
-- Google Testing Blog, *Test Sizes*; *Software Engineering at Google*, ch. 11–14
-- John Hughes, *QuickCheck testing for fun and profit* (property-based testing)
+- Mike Cohn, _Succeeding with Agile_ (the test pyramid)
+- Google Testing Blog, _Test Sizes_; _Software Engineering at Google_, ch. 11–14
+- John Hughes, _QuickCheck testing for fun and profit_ (property-based testing)

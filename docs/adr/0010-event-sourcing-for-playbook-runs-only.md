@@ -7,7 +7,7 @@
 
 ## Context and problem statement
 
-Event sourcing stores the *sequence of facts* that happened, instead of the current state,
+Event sourcing stores the _sequence of facts_ that happened, instead of the current state,
 and derives state by folding over those events. It is powerful but costly: projections,
 versioning of event schemas, snapshotting and a harder mental model. Where, if anywhere,
 does Spine need it?
@@ -52,10 +52,12 @@ does Spine need it?
 ## Pros and cons of the options
 
 ### Event-source everything
+
 - 👍 Uniform model, with time-travel for all entities.
 - 👎 Massive complexity for CRUD data, plus projections everywhere. Classic over-engineering.
 
 ### Event-source nothing
+
 - 👍 Simplest.
 - 👎 Resume logic depends on a mutable blob that can be half-written. History and state can disagree.
 
@@ -67,6 +69,6 @@ does Spine need it?
 
 ## Further reading
 
-- Greg Young, *CQRS Documents* (2010)
-- Martin Fowler, *Event Sourcing* (bliki)
-- Temporal, *Event History* concepts (the same idea applied to durable workflows)
+- Greg Young, _CQRS Documents_ (2010)
+- Martin Fowler, _Event Sourcing_ (bliki)
+- Temporal, _Event History_ concepts (the same idea applied to durable workflows)

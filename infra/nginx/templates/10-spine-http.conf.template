@@ -1,0 +1,105 @@
+# Spine edge configuration, http{} context (ADR-0082). Rendered by the nginx image's
+# envsubst step: only ${SPINE_*} variables are substituted (NGINX_ENVSUBST_FILTER), so
+# nginx's own $variables are left alone.
+
+server_tokens off;            # don't advertise the nginx version
+charset utf-8;
+
+# --- Client IP (real_ip) ----------------------------------------------------------------
+# nginx is the edge: $remote_addr is the TCP peer. If a load balancer sits in front of it,
+# list the LB's address(es) in SPINE_REAL_IP_FROM so nginx takes the client IP from the
+# LB's X-Forwarded-For instead. Never trust X-Forwarded-For from arbitrary peers: anyone
+# could then claim any IP and walk around the per-IP rate limits.
+set_real_ip_from ${SPINE_REAL_IP_FROM};
+real_ip_header X-Forwarded-For;
+real_ip_recursive on;
+
+# --- Correlation ID ---------------------------------------------------------------------
+# Reuse a well-formed inbound X-Request-ID (same rule as the API), otherwise mint one.
+map $http_x_request_id $spine_request_id {
+    "~^[A-Za-z0-9._-]{8,128}$" $http_x_request_id;
+    default                     $request_id;
+}
+
+# --- HSTS ----------------------------------------------------------------------------------
+# Strict-Transport-Security is only meaningful (and only allowed) over TLS, so the value is
+# empty on plain HTTP and nginx omits an empty header. SPINE_HSTS_MAX_AGE defaults to 0 for
+# `localhost`, where HSTS would leak onto every other local dev server (HSTS ignores
+# ports); production sets 63072000 (2 years).
+map $https $spine_hsts {
+    on      "max-age=${SPINE_HSTS_MAX_AGE}; includeSubDomains";
+    default "";
+}
+
+# --- Access log: JSON, one line per request, with the correlation ID ----------------------
+log_format spine_json escape=json
+    '{"time":"$time_iso8601","requestId":"$spine_request_id","remoteAddr":"$remote_addr",'
+    '"method":"$request_method","uri":"$uri","status":$status,"bytes":$body_bytes_sent,'
+    '"requestTime":$request_time,"upstreamTime":"$upstream_response_time",'
+    '"userAgent":"$http_user_agent","tls":"$ssl_protocol"}';
+access_log /dev/stdout spine_json;
+
+# --- Rate limits (defence in depth; the API has its own per-user limits, ADR-0024) ---------
+# Login: slow down password guessing per client IP (10/min, small burst).
+limit_req_zone $binary_remote_addr zone=spine_login:10m rate=10r/m;
+# Webhooks: generous, but a misbehaving sensor can't flood the ingest path.
+limit_req_zone $binary_remote_addr zone=spine_webhooks:10m rate=50r/s;
+limit_req_status 429;
+limit_conn_zone $binary_remote_addr zone=spine_conn:10m;
+# Concurrent connections per client IP (slowloris-style exhaustion). One sensor or NAT gateway
+# can need more: raise SPINE_CONN_PER_CLIENT. Answer 429, not nginx's default 503, so a client
+# limit can't be mistaken for Spine's own back-pressure 503 (ADR-0093: that happened in a load test).
+limit_conn spine_conn ${SPINE_CONN_PER_CLIENT};
+limit_conn_status 429;
+
+# --- Upstream -------------------------------------------------------------------------------
+# `resolve` (nginx >= 1.27.3) re-resolves the name while running: when the API container
+# is recreated it gets a new IP, and without this nginx would keep proxying to the old one
+# (502 until nginx restarts). NGINX_LOCAL_RESOLVERS is filled in by the image's entrypoint
+# from /etc/resolv.conf (Docker's embedded DNS in compose).
+resolver ${NGINX_LOCAL_RESOLVERS} valid=10s ipv6=off;
+resolver_timeout 5s;
+
+upstream spine_api {
+    zone spine_api 64k;
+    server ${SPINE_API_UPSTREAM} resolve max_fails=3 fail_timeout=10s;
+    keepalive 32;
+}
+
+# --- Compression ------------------------------------------------------------------------------
+# Static assets only. API responses are NOT compressed: compressing responses that mix
+# secrets (tokens) with attacker-influenced input over TLS enables BREACH-style attacks.
+gzip on;
+gzip_comp_level 5;
+gzip_min_length 1024;
+gzip_vary on;
+gzip_types text/css application/javascript image/svg+xml application/manifest+json text/plain;
+
+# --- Request size defaults (raised per location where needed) --------------------------------
+client_max_body_size 1m;
+client_body_timeout 15s;
+client_header_timeout 15s;
+send_timeout 30s;
+
+# --- Upstream timeouts (fail fast; the API itself answers in well under a second) ----------
+proxy_connect_timeout 5s;
+proxy_send_timeout 30s;
+proxy_read_timeout 30s;
+
+# --- Plain HTTP server (port 8080) -------------------------------------------------------------
+# Serves the whole app for local use (demo, load tests, e2e). In production, replace the
+# body of this server with the redirect below and serve users on TLS only:
+#     location / { return 308 https://$host$request_uri; }
+server {
+    listen 8080;
+    server_name ${SPINE_SERVER_NAME};
+
+    # Liveness of nginx itself (container healthcheck); not proxied, not logged.
+    location = /nginx-health {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    include /etc/nginx/snippets/spine-locations.conf;
+}

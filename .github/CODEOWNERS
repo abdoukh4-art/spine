@@ -1,0 +1,5 @@
+# Default owner for everything. Refine per module as the team grows.
+*                       @abdoukh4-art
+/docs/adr/              @abdoukh4-art
+/apps/api/migrations/   @abdoukh4-art
+/.github/               @abdoukh4-art
