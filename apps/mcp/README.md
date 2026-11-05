@@ -29,6 +29,8 @@ Prompt: `triage_alert` (assess, explain, rehearse, recommend; never decide).
 make demo                              # a running stack with the ai-analyst@spine.test account
 pnpm --filter @spine/mcp build
 node apps/mcp/scripts/smoke.mjs        # drives the server like an agent and checks every guardrail
+node apps/mcp/scripts/call-tool.mjs get_alert '{"alertId":"<uuid>"}'   # what a model sees
+
 ```
 
 Claude Code, in the repository root (`.mcp.json`):
@@ -49,7 +51,8 @@ Claude Code, in the repository root (`.mcp.json`):
 }
 ```
 
-Then ask: _"Use the triage_alert prompt on the highest-scoring new alert."_
+Then ask: _"Use the triage_alert prompt on the highest-scoring new alert."_ Walkthrough:
+[tutorial 04](../../docs/tutorials/04-triage-with-an-ai-analyst.md).
 
 | Variable                                 | Default                 | Meaning                                                |
 | ---------------------------------------- | ----------------------- | ------------------------------------------------------ |

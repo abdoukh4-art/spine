@@ -109,7 +109,7 @@ coverage gate).
 
 77 ADRs (MADR, each with rejected alternatives and "what would make us revisit"), C4 / ERD /
 sequence diagrams / event catalog / OpenAPI, module guides with exercises and separate solutions
-for every module, 3 tutorials rehearsed against the code, runbooks, SLOs, backup/restore, upgrade,
+for every module, 4 tutorials rehearsed against the code, runbooks, SLOs, backup/restore, upgrade,
 threat model, testing strategy, glossary, reading list, 11 journal entries. **TSDoc on 341/341
 public exports**, enforced in CI (ADR-0094). CI fails on broken links.
 
