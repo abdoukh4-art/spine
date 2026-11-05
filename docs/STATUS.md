@@ -5,20 +5,21 @@
 
 _Last updated: 2026-11-05. v0.1 shipped on 2026-10-28; the gaps it listed were closed on 2026-10-29
 (PRs #10–#13), and closing them overturned two earlier conclusions (see the
-[journal](journal/2026-10-29-closing-the-gaps.md)). PRs #14–#15 added an AI analyst over MCP
-with four-eyes approvals ([journal](journal/2026-11-05-ai-analyst-mcp.md))._
+[journal](journal/2026-10-29-closing-the-gaps.md)). PRs #14–#19 added an AI analyst over MCP with four-eyes approvals, tutorial 04, OCSF export, a Sigma
+rule catalog and supply-chain signing ([journal](journal/2026-11-05-ai-analyst-mcp.md))._
 
 ## Phase overview
 
-| Phase | Scope                                                                                                                        | State                                |
-| ----- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| 0     | Vision, ADRs, contracts, monorepo skeleton, CI, docs hub                                                                     | ✅ done (PR #1)                      |
-| 1     | Auth+audit (#2) · Playbooks (#3) · Enrichment+scoring (#4) · Ingestion+alerts (#5) · Console (#6) · Infra+observability (#7) | ✅ merged                            |
-| 2     | Integration, metrics, demo, contract + e2e tests, tutorials                                                                  | ✅ done (PR #8)                      |
-| 3     | Security review, performance, docs completeness, final README                                                                | ✅ done (PR #8)                      |
-| 3+    | Close the reported gaps: coverage (#10), DB roles / F4 (#11), overload behaviour, DB-side metrics, TSDoc (#12)               | ✅ done                              |
-| AI    | AI analyst MCP server, four-eyes approvals (#14); approval-window race fix (#15)                                             | ✅ done                              |
-| —     | Release PR `develop → main` "Spine v0.1.0"                                                                                   | open for the owner, **never merged** |
+| Phase | Scope                                                                                                                        | State                                           |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| 0     | Vision, ADRs, contracts, monorepo skeleton, CI, docs hub                                                                     | ✅ done (PR #1)                                 |
+| 1     | Auth+audit (#2) · Playbooks (#3) · Enrichment+scoring (#4) · Ingestion+alerts (#5) · Console (#6) · Infra+observability (#7) | ✅ merged                                       |
+| 2     | Integration, metrics, demo, contract + e2e tests, tutorials                                                                  | ✅ done (PR #8)                                 |
+| 3     | Security review, performance, docs completeness, final README                                                                | ✅ done (PR #8)                                 |
+| 3+    | Close the reported gaps: coverage (#10), DB roles / F4 (#11), overload behaviour, DB-side metrics, TSDoc (#12)               | ✅ done                                         |
+| AI    | AI analyst MCP server, four-eyes approvals (#14); approval-window race fix (#15)                                             | ✅ done                                         |
+| 2026+ | Tutorial 04 (#16), OCSF 1.9.0 export (#17), Sigma rule catalog (#18), supply-chain pinning/signing/provenance (#19)          | ✅ done (release signing runs at first release) |
+| —     | Release PR `develop → main` "Spine v0.1.0"                                                                                   | open for the owner, **never merged**            |
 
 ## Complete (verified)
 
@@ -93,7 +94,11 @@ coverage gate).
   (+ combined coverage gates), contract drift, build, docs links, commitlint, CodeQL, gitleaks,
   deps-audit, SBOM, Docker build + Trivy (api, console), e2e on the full stack. Release workflow
   (release-please).
-- PRs #1–#15 merged into `develop` after green CI. The release PR `develop → main`
+- **Supply chain** ([ADR-0099](adr/0099-supply-chain-pinning-signing-provenance.md)): all 48 GitHub
+  Action references pinned to commit SHAs, enforced by `check-workflows.mjs` in CI (mutation-checked)
+  and kept current by Dependabot. Release images get keyless cosign signatures and SLSA build
+  provenance; an OpenSSF Scorecard workflow publishes the score.
+- PRs #1–#19 merged into `develop` after green CI. The release PR `develop → main`
   ("Spine v0.1.0") is open for the owner's review and is **not merged**.
 
 ### AI analyst (MCP)
@@ -116,6 +121,9 @@ public exports**, enforced in CI (ADR-0094). CI fails on broken links.
 ## Stubbed / not done
 
 - **Integrations are simulated by design** (ADR-0018); enrichment providers are fixture-driven mocks.
+- **Release signing, provenance and Scorecard are configured but not yet exercised:** they run only on
+  `main` (first release). The pinned `ci.yml`/`security.yml` are exercised on every PR; the two new
+  workflows were checked structurally, not run.
 - **Multi-host performance:** every number was measured on one 4-core machine running k6, nginx, the
   API, the worker and Postgres together. Separate hosts were not available in this environment;
   the procedure is documented.
