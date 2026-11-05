@@ -9,6 +9,7 @@ import { buildHttpServer, runReadinessChecks } from '../../src/platform/http/ser
 import { ManualClock } from '../../src/platform/runtime.js';
 import { testConfig } from '../support/config.js';
 import { createTestDatabase, type TestDatabase } from '../support/db.js';
+import { loadOcsfContract, validateOcsf } from '../support/ocsf-validator.js';
 
 const ANALYST_ID = '00000000-0000-7000-8000-00000000b001';
 const users: Record<string, { id: string; role: 'viewer' | 'analyst' }> = {
@@ -333,6 +334,39 @@ describe('GET /alerts/:id', () => {
     expect(
       (await server.inject({ url: '/api/v1/alerts/nope', headers: auth('viewer') })).statusCode,
     ).toBe(400);
+  });
+});
+
+describe('GET /alerts/:id/ocsf (ADR-0097)', () => {
+  it('exports a stored alert as a valid OCSF 1.9.0 Detection Finding', async () => {
+    const res = await server.inject({
+      url: `/api/v1/alerts/${ids.ps}/ocsf`,
+      headers: auth('viewer'),
+    });
+    expect(res.statusCode).toBe(200);
+    const finding = res.json<Record<string, unknown>>();
+    expect(
+      validateOcsf(finding, loadOcsfContract('detection_finding-1.9.0.contract.json')),
+    ).toEqual([]);
+    expect(finding).toMatchObject({
+      class_uid: 2004,
+      type_uid: 200401,
+      severity_id: 5,
+      metadata: { version: '1.9.0', uid: ids.ps },
+      finding_info: {
+        uid: ids.ps,
+        attacks: [{ technique: { uid: 'T1059.001' }, tactic: { uid: 'TA0002' } }],
+      },
+    });
+  });
+
+  it('answers 404 for an unknown alert, and requires authentication', async () => {
+    const unknown = await server.inject({
+      url: '/api/v1/alerts/00000000-0000-7000-8000-0000000fffff/ocsf',
+      headers: auth('viewer'),
+    });
+    expect(unknown.statusCode).toBe(404);
+    expect((await server.inject({ url: `/api/v1/alerts/${ids.ps}/ocsf` })).statusCode).toBe(401);
   });
 });
 

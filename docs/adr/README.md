@@ -90,4 +90,5 @@ in the same PR. CI checks that every ADR file appears in this index.
 | [0094](0094-tsdoc-on-the-public-surface.md)                       | Require TSDoc on the public surface, enforced in CI                                          | accepted | docs, ci                   |
 | [0095](0095-aggregate-metrics-in-the-database.md)                 | Aggregate SOC metrics in the database, with the TypeScript formulas as the executable spec   | accepted | architecture, performance  |
 | [0096](0096-mcp-ai-analyst-with-guardrails.md)                    | An MCP server for an AI analyst, with guardrails enforced by Spine itself                    | accepted | ai, security, architecture |
+| [0097](0097-ocsf-detection-finding-export.md)                     | Export alerts as OCSF 1.9.0 Detection Findings, validated against a generated contract       | accepted | interoperability, api      |
 | [0091](0091-combined-unit-and-integration-coverage.md)            | Measure API coverage over unit + integration tests, and enforce it                           | accepted | testing, ci                |

@@ -38,6 +38,8 @@ bugs).
   ([ADR-0010](docs/adr/0010-event-sourcing-for-playbook-runs-only.md), [0013](docs/adr/0013-playbook-dsl.md)).
 - **Safe by design:** response actions are simulated ([ADR-0018](docs/adr/0018-simulated-response-adapters.md)),
   plus deny-by-default RBAC, rotating refresh tokens with reuse detection, and an append-only audit log.
+- **Speaks OCSF:** `GET /alerts/:id/ocsf` returns an OCSF 1.9.0 Detection Finding for SIEMs and
+  data lakes, conformance-tested against the official schema ([ADR-0097](docs/adr/0097-ocsf-detection-finding-export.md)).
 - **AI analyst over MCP:** Claude can triage through Spine's API as its own audited account: read
   scores, rehearse playbooks as dry runs, brief a human. It can't approve or close anything, and
   four-eyes approvals stop it approving its own proposals ([apps/mcp](apps/mcp/README.md),
@@ -147,7 +149,7 @@ v0.1 is complete for its scope. What's done, stubbed and known-broken is listed 
 - async batch imports (security review F6);
 - `LISTEN/NOTIFY` outbox wake-ups and slimmer queue payloads ([ADR-0090](docs/adr/0090-load-test-fixes-retention-fail-open-poll-interval.md)), and a load test on separate hosts;
 - parallel playbook branches, a visual playbook editor on top of the DSL, OIDC SSO;
-- more source normalizers (OCSF export), more step types (tutorial 03's `isolate_host`).
+- Sigma rule ingestion, bulk OCSF export (NDJSON/Parquet), more step types (tutorial 03's `isolate_host`).
 
 ## License
 
