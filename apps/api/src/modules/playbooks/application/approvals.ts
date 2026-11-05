@@ -15,6 +15,17 @@ export interface ApprovalServiceDeps {
   logger: Logger;
 }
 
+/**
+ * The approval row exists and is pending, but the run hasn't recorded `approval.requested` yet:
+ * the step handler creates the approval as its side effect, and the executor appends the event in
+ * the next transaction, milliseconds later. A decision in that window is retried, not refused.
+ */
+class ApprovalNotYetOpenError extends Error {}
+
+/** How long a decision waits for the run to start waiting (attempts × delay ≈ 1 s). */
+const NOT_YET_OPEN_ATTEMPTS = 20;
+const NOT_YET_OPEN_DELAY_MS = 50;
+
 /** Who is deciding. */
 export interface Decider {
   id: string;
@@ -43,7 +54,8 @@ export class ApprovalService {
    * @throws NotFoundError | ConflictError (already decided or expired) | ForbiddenError
    */
   async decide(approvalId: string, input: ApprovalDecision, actor: Decider): Promise<Approval> {
-    for (let attempt = 1; attempt <= CONCURRENCY_RETRIES; attempt += 1) {
+    let concurrencyConflicts = 0;
+    for (let notYetOpen = 0; ; ) {
       try {
         const { approval, seq } = await this.deps.store.transaction((uow) =>
           this.decideInTransaction(uow, approvalId, input, actor),
@@ -51,10 +63,24 @@ export class ApprovalService {
         await this.enqueueQuietly(approval.runId, seq);
         return approval;
       } catch (err) {
-        if (!(err instanceof ConcurrencyError)) throw err;
+        if (err instanceof ConcurrencyError) {
+          concurrencyConflicts += 1;
+          if (concurrencyConflicts >= CONCURRENCY_RETRIES) {
+            throw new ConflictError('the run is changing too quickly; retry the decision');
+          }
+        } else if (err instanceof ApprovalNotYetOpenError) {
+          notYetOpen += 1;
+          if (notYetOpen >= NOT_YET_OPEN_ATTEMPTS) {
+            throw new ConflictError(
+              'the run has not started waiting for this approval yet; retry in a moment',
+            );
+          }
+          await new Promise((resolve) => setTimeout(resolve, NOT_YET_OPEN_DELAY_MS));
+        } else {
+          throw err;
+        }
       }
     }
-    throw new ConflictError('the run is changing too quickly; retry the decision');
   }
 
   private async decideInTransaction(
@@ -122,6 +148,10 @@ export class ApprovalService {
     if (!loaded) throw new NotFoundError('Run', approval.runId);
     const state = reduce(loaded.definition, loaded.events);
     if (state.pendingApproval?.approvalId !== approval.id) {
+      // The approval step is still running: the run is about to wait for exactly this approval.
+      if (state.pendingApproval === null && state.steps[approval.stepId]?.status === 'running') {
+        throw new ApprovalNotYetOpenError();
+      }
       throw new ConflictError('the run is no longer waiting for this approval');
     }
     const seq = state.lastSeq + 1;
