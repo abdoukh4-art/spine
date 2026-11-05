@@ -43,11 +43,11 @@ calls: everything runs offline from fixtures.
 
 ### Tests (all run locally and in CI, all passing)
 
-| Suite                                              | Count                                                                                         |
-| -------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| Unit + property (Vitest, fast-check)               | **779**: shared-schema 61, enrichers 93, playbook-engine 65, console 141, api 404, mcp 15     |
-| Integration (Testcontainers Postgres 16 + Redis 7) | **165**, incl. end-to-end pipeline, OpenAPI contract, DB-role attacks, SQL-vs-spec, four eyes |
-| End-to-end (Playwright + axe, real Compose stack)  | **4** analyst journeys                                                                        |
+| Suite                                              | Count                                                                                                      |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Unit + property (Vitest, fast-check)               | **797**: shared-schema 61, enrichers 93, playbook-engine 65, console 141, api 422, mcp 15                  |
+| Integration (Testcontainers Postgres 16 + Redis 7) | **168**, incl. end-to-end pipeline, OpenAPI contract, DB-role attacks, SQL-vs-spec, four eyes, OCSF, Sigma |
+| End-to-end (Playwright + axe, real Compose stack)  | **4** analyst journeys                                                                                     |
 
 Mutation checks: the most important tests were also proven to **fail** when the code they guard is
 broken (end-to-end wiring, webhook replay, DB-role `REVOKE`, queue back-pressure, SQL clamp,
@@ -62,7 +62,7 @@ coverage gate).
 | packages/shared-schema                          | **97.4 %** | 89.5 %     | 85 %                       |
 | apps/console                                    | 97.8 %     | 88.7 %     | —                          |
 | api `src/modules/*/domain/**` (unit tests only) | 98.9–100 % | 91–100 %   | 85 % (ADR-0091)            |
-| **apps/api, unit + integration**                | **95.5 %** | **86.9 %** | 90 % lines / 80 % branches |
+| **apps/api, unit + integration**                | **95.7 %** | **87.3 %** | 90 % lines / 80 % branches |
 | apps/mcp                                        | 97.6 %     | 81.7 %     | 85 % lines / 80 % branches |
 
 ### Performance ([performance.md](operations/performance.md); one 4-core host shared by k6 and the whole stack)
@@ -112,7 +112,7 @@ coverage gate).
 
 ### Docs (learning hub)
 
-77 ADRs (MADR, each with rejected alternatives and "what would make us revisit"), C4 / ERD /
+80 ADRs (MADR, each with rejected alternatives and "what would make us revisit"), C4 / ERD /
 sequence diagrams / event catalog / OpenAPI, module guides with exercises and separate solutions
 for every module, 4 tutorials rehearsed against the code, runbooks, SLOs, backup/restore, upgrade,
 threat model, testing strategy, glossary, reading list, 11 journal entries. **TSDoc on 341/341
