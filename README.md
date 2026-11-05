@@ -113,7 +113,7 @@ Start at the **[documentation hub](docs/README.md)**, which has a step-by-step l
 
 - 🎯 [Vision](docs/00-vision.md) · 🛡️ [Domain primer: SOC, SIEM vs SOAR, ATT&CK, MTTD/MTTR](docs/01-domain-primer.md) · [Glossary](docs/glossary.md)
 - 🏗️ [Architecture](docs/architecture/README.md) · 📝 [75+ ADRs](docs/adr/README.md) · 📚 [Reading list](docs/reading-list.md)
-- 🧩 [Module guides with exercises](docs/modules/README.md) · 🛠️ Tutorials: [a scoring rule](docs/tutorials/01-write-a-scoring-rule.md), [an enricher](docs/tutorials/02-write-an-enricher.md), [a playbook step](docs/tutorials/03-write-a-playbook-step.md)
+- 🧩 [Module guides with exercises](docs/modules/README.md) · 🛠️ Tutorials: [a scoring rule](docs/tutorials/01-write-a-scoring-rule.md), [an enricher](docs/tutorials/02-write-an-enricher.md), [a playbook step](docs/tutorials/03-write-a-playbook-step.md), [an AI analyst tool](docs/tutorials/04-triage-with-an-ai-analyst.md)
 - 🔐 [Security](docs/security/README.md) · ⚙️ [Operations](docs/operations/README.md) · 🧪 [Testing strategy](docs/testing/strategy.md)
 - 📓 [Engineering journal](docs/journal/README.md): what broke and how it was debugged
 
