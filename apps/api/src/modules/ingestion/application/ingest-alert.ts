@@ -5,6 +5,7 @@ import type { Clock, IdGenerator } from '../../../platform/runtime.js';
 import { OpenAlertExistsError, type AlertsPublicApi } from '../../alerts/public-api.js';
 import { idempotencyExpiry } from '../domain/idempotency.js';
 import { prepareAlert } from '../domain/prepare-alert.js';
+import { applySigmaRule, type SigmaCatalog } from '../domain/sigma.js';
 import type { IdempotencyStore, TransactionRunner } from './ports.js';
 
 /** What the HTTP adapter asks for. `alert` has already passed a normalizer. */
@@ -30,6 +31,8 @@ export interface IngestAlertDeps {
   ids: IdGenerator;
   /** How many times to retry after losing a race (default 5). */
   maxAttempts?: number;
+  /** Sigma rules for enriching alerts raised by Sigma-based detections (ADR-0098); default none. */
+  sigma?: SigmaCatalog;
 }
 
 /** Internal signal: a concurrent transaction won a race; start over and observe its result. */
@@ -38,7 +41,7 @@ class LostRace extends Error {}
 /**
  * The ingestion use case (ADR-0012, ADR-0033):
  *
- *     prepare (indicators, raw cap, fingerprint)  — pure, outside the transaction
+ *     prepare (Sigma catalog, indicators, raw cap, fingerprint)  — pure, outside the transaction
  *     BEGIN
  *       idempotency record for (scope, key)?  → replay it (same body) or 409 (different body)
  *       open alert with this fingerprint?      → duplicate_count+1, last_seen_at, alert.deduplicated
@@ -60,7 +63,7 @@ export class IngestAlert {
 
   /** Ingests one normalized alert. @throws IdempotencyKeyReusedError, ConflictError. */
   async execute(command: IngestCommand): Promise<IngestOutcome> {
-    const prepared = prepareAlert(command.alert);
+    const prepared = prepareAlert(applySigmaRule(command.alert, this.deps.sigma ?? new Map()));
     const receivedAt = this.deps.clock.now();
     const newId = this.deps.ids.next();
     for (let attempt = 1; ; attempt += 1) {

@@ -16,3 +16,4 @@ export * from './metrics.js';
 export * from './events.js';
 export * from './api.js';
 export * from './ocsf.js';
+export * from './sigma.js';

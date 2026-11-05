@@ -139,4 +139,4 @@ public exports**, enforced in CI (ADR-0094). CI fails on broken links.
 2. `LISTEN/NOTIFY` outbox wake-ups and slimmer queue payloads (ADR-0090 "revisit").
 3. Retention jobs for `domain_events` and the enrichment inbox.
 4. Async batch imports (F6), parallel playbook branches.
-5. OIDC SSO, Sigma rule ingestion, bulk OCSF export, more step types (tutorial 03's `isolate_host`).
+5. OIDC SSO, bulk OCSF export, more step types (tutorial 03's `isolate_host`).
