@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { reduce } from '@spine/playbook-engine';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -176,6 +177,70 @@ describe('approval gates', () => {
     await expect(
       h.pb.approvals.decide(approvalId, { decision: 'reject' }, analyst),
     ).rejects.toThrow(/already approved/);
+  });
+
+  it('a decision that arrives before the run records approval.requested waits for it, not 409', async () => {
+    // The approval step creates its approval row, then the executor appends approval.requested
+    // in the next transaction. Reproduce that window by hand with a one-step playbook.
+    await publishPlaybook(
+      playbook(
+        'approve-first',
+        [{ id: 'gate', type: 'approval', with: { prompt: 'go?' } }],
+        'gate',
+      ),
+    );
+    const reviewer = { id: '0190f0a0-0000-7000-8000-00000000000c', role: 'analyst' as const };
+    const openWindow = async () => {
+      const snapshot = h.alert({ category: 'malware', score: 92 });
+      const runId = await startManual('approve-first', snapshot.alert.id);
+      const loaded = (await h.pb.store.runs.load(runId))!;
+      const now = new Date().toISOString();
+      await h.pb.store.runs.append(runId, loaded.events.length, [
+        {
+          seq: loaded.events.length + 1,
+          type: 'step.started',
+          stepId: 'gate',
+          payload: { attempt: 1, idempotencyKey: `${runId}:gate:1` },
+          occurredAt: now,
+        },
+      ]);
+      const approval = await h.pb.store.approvals.createIfMissing({
+        id: randomUUID(),
+        runId,
+        stepId: 'gate',
+        alertId: snapshot.alert.id,
+        playbookId: 'approve-first',
+        approverRole: 'analyst',
+        prompt: 'go?',
+        requestedAt: now,
+        expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+      });
+      const recordRequested = () =>
+        h.pb.store.runs.append(runId, loaded.events.length + 1, [
+          {
+            seq: loaded.events.length + 2,
+            type: 'approval.requested',
+            stepId: 'gate',
+            payload: { approvalId: approval.id, expiresAt: approval.expiresAt },
+            occurredAt: new Date().toISOString(),
+          },
+        ]);
+      return { approval, recordRequested };
+    };
+
+    // The executor catches up 150 ms after the decision arrived: the decision succeeds.
+    const early = await openWindow();
+    setTimeout(() => void early.recordRequested(), 150);
+    await expect(
+      h.pb.approvals.decide(early.approval.id, { decision: 'approve' }, reviewer),
+    ).resolves.toMatchObject({ status: 'approved' });
+
+    // The executor never catches up: after ~1 s the answer is an accurate 409, nothing decided.
+    const stuck = await openWindow();
+    await expect(
+      h.pb.approvals.decide(stuck.approval.id, { decision: 'approve' }, reviewer),
+    ).rejects.toThrow(/has not started waiting for this approval yet/);
+    expect((await h.pb.store.approvals.get(stuck.approval.id))?.status).toBe('pending');
   });
 
   it('four eyes: whoever started a run cannot approve it; someone else can (ADR-0096, F7)', async () => {

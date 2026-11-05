@@ -38,6 +38,10 @@ bugs).
   ([ADR-0010](docs/adr/0010-event-sourcing-for-playbook-runs-only.md), [0013](docs/adr/0013-playbook-dsl.md)).
 - **Safe by design:** response actions are simulated ([ADR-0018](docs/adr/0018-simulated-response-adapters.md)),
   plus deny-by-default RBAC, rotating refresh tokens with reuse detection, and an append-only audit log.
+- **AI analyst over MCP:** Claude can triage through Spine's API as its own audited account: read
+  scores, rehearse playbooks as dry runs, brief a human. It can't approve or close anything, and
+  four-eyes approvals stop it approving its own proposals ([apps/mcp](apps/mcp/README.md),
+  [ADR-0096](docs/adr/0096-mcp-ai-analyst-with-guardrails.md)).
 - **Operable:** health and readiness probes, back-pressure, OpenTelemetry traces across the async hop,
   Prometheus metrics, a provisioned Grafana dashboard, runbooks and SLOs.
 
@@ -95,13 +99,13 @@ C4 diagrams, sequence diagrams, the ERD and the event catalog: [docs/architectur
 
 ## Quality, measured
 
-|             |                                                                                                                                                                                                                                       |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Tests       | 762 unit/property tests (Vitest + fast-check), 163 integration tests (Testcontainers Postgres + Redis) incl. OpenAPI contract, DB-role attack and SQL-vs-spec differential tests, 4 Playwright journeys with axe accessibility checks |
-| Coverage    | API 95.6 % lines over unit + integration (CI gate 90 %), playbook-engine 99.6 %, enrichers 100 %, shared-schema 97.4 %, domain folders 98–100 % (gate 85 %)                                                                           |
-| Performance | 250 alerts/s offered: 0 errors, accepted p95 354 ms, excess shed with `503 + Retry-After`; sustained pipeline ≈ 45 alerts/s; ingest → scored p95 125 ms at 20/s (one shared 4-core host, [details](docs/operations/performance.md))   |
-| Security    | adversarial review with 7 findings (5 fixed, 2 accepted) ([report](docs/security/review-2026-10-28.md)); CodeQL, gitleaks, pnpm audit, Trivy on both images, SBOM in CI                                                               |
-| CI          | 17 required checks including a full-stack e2e job ([ADR-0025](docs/adr/0025-git-workflow-and-ci-gates.md))                                                                                                                            |
+|             |                                                                                                                                                                                                                                                  |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Tests       | 779 unit/property tests (Vitest + fast-check), 165 integration tests (Testcontainers Postgres + Redis) incl. OpenAPI contract, DB-role attack, four-eyes and SQL-vs-spec differential tests, 4 Playwright journeys with axe accessibility checks |
+| Coverage    | API 95.6 % lines over unit + integration (CI gate 90 %), playbook-engine 99.6 %, enrichers 100 %, shared-schema 97.4 %, domain folders 98–100 % (gate 85 %)                                                                                      |
+| Performance | 250 alerts/s offered: 0 errors, accepted p95 354 ms, excess shed with `503 + Retry-After`; sustained pipeline ≈ 45 alerts/s; ingest → scored p95 125 ms at 20/s (one shared 4-core host, [details](docs/operations/performance.md))              |
+| Security    | adversarial review with 7 findings (6 fixed, 1 accepted) ([report](docs/security/review-2026-10-28.md)); four-eyes approvals; CodeQL, gitleaks, pnpm audit, Trivy on both images, SBOM in CI                                                     |
+| CI          | 17 required checks including a full-stack e2e job ([ADR-0025](docs/adr/0025-git-workflow-and-ci-gates.md))                                                                                                                                       |
 
 ## Learn from it
 
@@ -126,6 +130,7 @@ make check              # lint, architecture rules, typecheck, tests, docs links
 ```
 apps/api                  Fastify API + worker (modules: ingestion, alerts, enrichment, scoring, playbooks, auth, metrics)
 apps/console              React 19 analyst console
+apps/mcp                  MCP server for an AI analyst (Claude), with guardrails
 packages/shared-schema    Zod contracts: the single source of truth (+ the predicate interpreter)
 packages/playbook-engine  Pure playbook DSL validation and durable executor
 packages/enrichers        Enricher port, resilience primitives, fixture-driven mock providers
@@ -139,7 +144,7 @@ docs/                     The learning hub
 v0.1 is complete for its scope. What's done, stubbed and known-broken is listed honestly in
 [docs/STATUS.md](docs/STATUS.md). Next steps:
 
-- async batch imports and four-eyes approvals (security review F6, F7);
+- async batch imports (security review F6);
 - `LISTEN/NOTIFY` outbox wake-ups and slimmer queue payloads ([ADR-0090](docs/adr/0090-load-test-fixes-retention-fail-open-poll-interval.md)), and a load test on separate hosts;
 - parallel playbook branches, a visual playbook editor on top of the DSL, OIDC SSO;
 - more source normalizers (OCSF export), more step types (tutorial 03's `isolate_host`).
