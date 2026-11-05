@@ -3,9 +3,10 @@
 > **Honest by rule:** every number below comes from a run that was executed and observed.
 > Anything not proven by a test or a recorded run is listed as unverified.
 
-_Last updated: 2026-10-29. v0.1 shipped on 2026-10-28; the gaps it listed were closed on 2026-10-29
-(PRs #10–#12), and closing them overturned two earlier conclusions (see the
-[journal](journal/2026-10-29-closing-the-gaps.md))._
+_Last updated: 2026-11-05. v0.1 shipped on 2026-10-28; the gaps it listed were closed on 2026-10-29
+(PRs #10–#13), and closing them overturned two earlier conclusions (see the
+[journal](journal/2026-10-29-closing-the-gaps.md)). PRs #14–#15 added an AI analyst over MCP
+with four-eyes approvals ([journal](journal/2026-11-05-ai-analyst-mcp.md))._
 
 ## Phase overview
 
@@ -16,6 +17,7 @@ _Last updated: 2026-10-29. v0.1 shipped on 2026-10-28; the gaps it listed were c
 | 2     | Integration, metrics, demo, contract + e2e tests, tutorials                                                                  | ✅ done (PR #8)                      |
 | 3     | Security review, performance, docs completeness, final README                                                                | ✅ done (PR #8)                      |
 | 3+    | Close the reported gaps: coverage (#10), DB roles / F4 (#11), overload behaviour, DB-side metrics, TSDoc (#12)               | ✅ done                              |
+| AI    | AI analyst MCP server, four-eyes approvals (#14); approval-window race fix (#15)                                             | ✅ done                              |
 | —     | Release PR `develop → main` "Spine v0.1.0"                                                                                   | open for the owner, **never merged** |
 
 ## Complete (verified)
@@ -40,11 +42,11 @@ calls: everything runs offline from fixtures.
 
 ### Tests (all run locally and in CI, all passing)
 
-| Suite                                              | Count                                                                              |
-| -------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| Unit + property (Vitest, fast-check)               | **762**: shared-schema 61, enrichers 93, playbook-engine 65, console 141, api 402  |
-| Integration (Testcontainers Postgres 16 + Redis 7) | **163**, incl. end-to-end pipeline, OpenAPI contract, DB-role attacks, SQL-vs-spec |
-| End-to-end (Playwright + axe, real Compose stack)  | **4** analyst journeys                                                             |
+| Suite                                              | Count                                                                                         |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Unit + property (Vitest, fast-check)               | **779**: shared-schema 61, enrichers 93, playbook-engine 65, console 141, api 404, mcp 15     |
+| Integration (Testcontainers Postgres 16 + Redis 7) | **165**, incl. end-to-end pipeline, OpenAPI contract, DB-role attacks, SQL-vs-spec, four eyes |
+| End-to-end (Playwright + axe, real Compose stack)  | **4** analyst journeys                                                                        |
 
 Mutation checks: the most important tests were also proven to **fail** when the code they guard is
 broken (end-to-end wiring, webhook replay, DB-role `REVOKE`, queue back-pressure, SQL clamp,
@@ -59,7 +61,8 @@ coverage gate).
 | packages/shared-schema                          | **97.4 %** | 89.5 %     | 85 %                       |
 | apps/console                                    | 97.8 %     | 88.7 %     | —                          |
 | api `src/modules/*/domain/**` (unit tests only) | 98.9–100 % | 91–100 %   | 85 % (ADR-0091)            |
-| **apps/api, unit + integration**                | **95.6 %** | **86.9 %** | 90 % lines / 80 % branches |
+| **apps/api, unit + integration**                | **95.5 %** | **86.9 %** | 90 % lines / 80 % branches |
+| apps/mcp                                        | 97.6 %     | 81.7 %     | 85 % lines / 80 % branches |
 
 ### Performance ([performance.md](operations/performance.md); one 4-core host shared by k6 and the whole stack)
 
@@ -75,9 +78,9 @@ coverage gate).
 
 ### Security
 
-- Adversarial review ([report](security/review-2026-10-28.md)): 7 findings, **5 fixed** with
-  regression tests (F1, F2, F3, F4, F5), 2 accepted for v0.1 (F6 synchronous batch import, F7 no
-  four-eyes approvals).
+- Adversarial review ([report](security/review-2026-10-28.md)): 7 findings, **6 fixed** with
+  regression tests (F1–F5, and F7 by four-eyes approvals), 1 accepted for v0.1 (F6 synchronous
+  batch import).
 - F4 closed by [ADR-0092](adr/0092-separate-migration-and-runtime-database-roles.md): the app runs
   as a non-owner role and **cannot** rewrite or un-protect the audit log (tested as the attack itself,
   on the live stack too); production refuses a privileged role.
@@ -90,15 +93,24 @@ coverage gate).
   (+ combined coverage gates), contract drift, build, docs links, commitlint, CodeQL, gitleaks,
   deps-audit, SBOM, Docker build + Trivy (api, console), e2e on the full stack. Release workflow
   (release-please).
-- PRs #1–#12 merged into `develop` after green CI. The release PR `develop → main`
+- PRs #1–#15 merged into `develop` after green CI. The release PR `develop → main`
   ("Spine v0.1.0") is open for the owner's review and is **not merged**.
+
+### AI analyst (MCP)
+
+- `apps/mcp`: an MCP server that lets Claude (Claude Code, Claude Desktop) triage through Spine's
+  public API as its own account ([ADR-0096](adr/0096-mcp-ai-analyst-with-guardrails.md)). 8 tools,
+  dry runs by default, sensor text fenced as untrusted, no tool to approve, reject or close.
+- **Four-eyes approvals, enforced by Spine:** whoever started a run can't approve it. Verified on the
+  live stack: the agent's raw token gets `403` on its own run.
+- Live smoke test (`apps/mcp/scripts/smoke.mjs`): **14/14** checks.
 
 ### Docs (learning hub)
 
-76 ADRs (MADR, each with rejected alternatives and "what would make us revisit"), C4 / ERD /
+77 ADRs (MADR, each with rejected alternatives and "what would make us revisit"), C4 / ERD /
 sequence diagrams / event catalog / OpenAPI, module guides with exercises and separate solutions
 for every module, 3 tutorials rehearsed against the code, runbooks, SLOs, backup/restore, upgrade,
-threat model, testing strategy, glossary, reading list, 10 journal entries. **TSDoc on 341/341
+threat model, testing strategy, glossary, reading list, 11 journal entries. **TSDoc on 341/341
 public exports**, enforced in CI (ADR-0094). CI fails on broken links.
 
 ## Stubbed / not done
@@ -107,7 +119,7 @@ public exports**, enforced in CI (ADR-0094). CI fails on broken links.
 - **Multi-host performance:** every number was measured on one 4-core machine running k6, nginx, the
   API, the worker and Postgres together. Separate hosts were not available in this environment;
   the procedure is documented.
-- Batch import is synchronous within one request (F6); no four-eyes approvals (F7).
+- Batch import is synchronous within one request (F6).
 - No retention/purge jobs for `domain_events` or the enrichment inbox (enrichment exercise 5).
 - Playbooks run steps sequentially; parallel branches aren't implemented.
 - Non-goals for v0.1: SSO/MFA, multi-tenancy, a visual playbook editor.
@@ -126,5 +138,5 @@ public exports**, enforced in CI (ADR-0094). CI fails on broken links.
 1. Load-test on separate hosts (API, worker, Postgres, load generator), then tune `EVENT_WORKER_CONCURRENCY` and the pool.
 2. `LISTEN/NOTIFY` outbox wake-ups and slimmer queue payloads (ADR-0090 "revisit").
 3. Retention jobs for `domain_events` and the enrichment inbox.
-4. Async batch imports (F6), four-eyes approvals (F7), parallel playbook branches.
+4. Async batch imports (F6), parallel playbook branches.
 5. OIDC SSO, more source normalizers (OCSF export), more step types (tutorial 03's `isolate_host`).
