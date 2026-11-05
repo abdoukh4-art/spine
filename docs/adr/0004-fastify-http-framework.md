@@ -47,15 +47,18 @@ in `domain/` or `application/` ([ADR-0002](0002-hexagonal-modular-monolith.md)).
 ## Pros and cons of the options
 
 ### Express 5
+
 - 👍 Ubiquitous, and everyone knows it.
 - 👎 No built-in schema validation or serialization. Async error handling only arrived in v5. Slower.
 
 ### NestJS
+
 - 👍 Batteries included: DI, modules.
 - 👎 Decorator-heavy and framework-centric. It pushes framework concepts into business
   code, which works against hexagonal purity. Lots of magic for learners.
 
 ### Hono
+
 - 👍 Tiny, fast, runs at the edge.
 - 👎 A younger ecosystem for OpenAPI, rate limiting and cookie handling on Node, and less production mileage.
 
@@ -66,4 +69,4 @@ in `domain/` or `application/` ([ADR-0002](0002-hexagonal-modular-monolith.md)).
 
 ## Further reading
 
-- Fastify docs: *Encapsulation*, *Lifecycle*, *Validation and Serialization*
+- Fastify docs: _Encapsulation_, _Lifecycle_, _Validation and Serialization_

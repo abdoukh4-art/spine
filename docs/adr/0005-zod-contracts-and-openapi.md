@@ -15,7 +15,7 @@ If these are written separately, they **will** drift.
 ## Decision drivers
 
 - One definition → runtime validation + static types + documentation.
-- Validation at every trust boundary (OWASP: *never trust input*).
+- Validation at every trust boundary (OWASP: _never trust input_).
 - Contract tests must be able to check responses against the published spec.
 
 ## Considered options
@@ -48,14 +48,17 @@ If these are written separately, they **will** drift.
 ## Pros and cons of the options
 
 ### Hand-written OpenAPI
+
 - 👍 Design-first, language-neutral.
 - 👎 Two artifacts (spec + validators) plus a code generation step. Spec and code can still drift without strict CI.
 
 ### TypeBox
+
 - 👍 Native JSON Schema, very fast with Ajv.
 - 👎 Less ergonomic for refinements and transforms (e.g. normalizing indicator values), and less familiar to learners.
 
 ### tRPC
+
 - 👍 Excellent DX between TS client and server.
 - 👎 No OpenAPI, and webhook senders and third-party integrators are not TypeScript.
 

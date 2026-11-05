@@ -29,10 +29,10 @@ need a job queue with retries, delays, concurrency limits and visibility.
 
 **Chosen option: BullMQ.** Queues:
 
-| Queue | Producer | Consumer | Concurrency (default) |
-|---|---|---|---|
-| `spine.events` | outbox relay | event handlers (enrichment, scoring, triggers, projections) | 8 |
-| `spine.playbook-runs` | playbooks module | playbook executor | 4 |
+| Queue                 | Producer         | Consumer                                                    | Concurrency (default) |
+| --------------------- | ---------------- | ----------------------------------------------------------- | --------------------- |
+| `spine.events`        | outbox relay     | event handlers (enrichment, scoring, triggers, projections) | 8                     |
+| `spine.playbook-runs` | playbooks module | playbook executor                                           | 4                     |
 
 **The queue is not the source of truth.** A playbook job contains only `{ runId }`. All
 run state lives in Postgres as an append-only event log ([ADR-0010](0010-event-sourcing-for-playbook-runs-only.md)).
@@ -50,19 +50,22 @@ Jobs use deterministic `jobId`s (`run:<runId>:<seq>`) so duplicates are ignored.
 ## Pros and cons of the options
 
 ### pg-boss / graphile-worker
+
 - 👍 No Redis at all, and the queue lives in the same transaction as state.
 - 👎 Polling load on the primary DB, and a smaller ecosystem. The mission mandates BullMQ,
-  and its exposure is valuable for the target job market. The outbox relay *does* use
+  and its exposure is valuable for the target job market. The outbox relay _does_ use
   Postgres `SKIP LOCKED`, so learners see both styles.
 
 ### RabbitMQ
+
 - 👍 A real broker with routing.
 - 👎 Heavier to operate, and delayed messages need a plugin.
 
 ### Temporal
+
 - 👍 Exactly built for durable workflows.
 - 👎 A large extra cluster to run. It hides the durable-execution mechanics that this
-  project wants to *teach* by implementing them in `packages/playbook-engine`.
+  project wants to _teach_ by implementing them in `packages/playbook-engine`.
 
 ## What would make us revisit this
 
@@ -71,5 +74,5 @@ Jobs use deterministic `jobId`s (`run:<runId>:<seq>`) so duplicates are ignored.
 
 ## Further reading
 
-- BullMQ docs: *Retrying failing jobs*, *Job IDs*, *Graceful shutdown*
-- Temporal blog, *Durable execution explained*
+- BullMQ docs: _Retrying failing jobs_, _Job IDs_, _Graceful shutdown_
+- Temporal blog, _Durable execution explained_

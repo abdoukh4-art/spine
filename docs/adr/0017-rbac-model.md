@@ -30,15 +30,15 @@ control is OWASP Top 10 #1 (A01:2021).
 iterates over every registered route and asserts it declares an access policy. A route
 without a policy fails the test, which gives us deny-by-default.
 
-| Capability | viewer | analyst | admin |
-|---|:-:|:-:|:-:|
-| Read alerts, cases, runs, metrics | ✅ | ✅ | ✅ |
-| Change alert status/assignee, create cases | | ✅ | ✅ |
-| Approve/reject approval gates | | ✅ | ✅ |
-| Start manual / dry-run playbook runs | | ✅ | ✅ |
-| Publish playbooks, change scoring rules | | | ✅ |
-| Manage users, read audit log | | | ✅ |
-| Submit alerts manually (`POST /alerts`, batch import) | | ✅ | ✅ |
+| Capability                                            | viewer | analyst | admin |
+| ----------------------------------------------------- | :----: | :-----: | :---: |
+| Read alerts, cases, runs, metrics                     |   ✅   |   ✅    |  ✅   |
+| Change alert status/assignee, create cases            |        |   ✅    |  ✅   |
+| Approve/reject approval gates                         |        |   ✅    |  ✅   |
+| Start manual / dry-run playbook runs                  |        |   ✅    |  ✅   |
+| Publish playbooks, change scoring rules               |        |         |  ✅   |
+| Manage users, read audit log                          |        |         |  ✅   |
+| Submit alerts manually (`POST /alerts`, batch import) |        |   ✅    |  ✅   |
 
 Machine ingestion uses **webhook secrets** (HMAC-SHA256 signature over the body,
 `X-Spine-Signature` header, with a timestamp to prevent replay) per source, not user accounts.
@@ -51,10 +51,12 @@ Machine ingestion uses **webhook secrets** (HMAC-SHA256 signature over the body,
 ## Pros and cons of the options
 
 ### Fine-grained permissions
+
 - 👍 Flexible.
 - 👎 More moving parts, and easy to misconfigure. Our routes map cleanly onto three roles today.
 
 ### ABAC / policy engine
+
 - 👍 Expressive and auditable policies.
 - 👎 A new language and runtime. Overkill for three roles.
 

@@ -45,15 +45,18 @@ Postgres on startup (the run table is authoritative).
 ## Pros and cons of the options
 
 ### MongoDB
+
 - 👍 Natural for the raw JSON payloads.
 - 👎 Weaker multi-document transactions for the outbox pattern. Relational parts (RBAC,
   approvals) are awkward. A second paradigm for learners.
 
 ### Elasticsearch as primary
+
 - 👍 Superb search and aggregations.
 - 👎 Not a transactional store, operationally heavy, and licensing complexity.
 
 ### Postgres + Elasticsearch
+
 - 👍 Best of both.
 - 👎 Two systems to sync (dual-write problems), which is overkill for v0.1.
 
@@ -64,5 +67,5 @@ Postgres on startup (the run table is authoritative).
 
 ## Further reading
 
-- PostgreSQL docs: *JSON Types*, *SELECT … FOR UPDATE SKIP LOCKED*, *pg_trgm*
-- Martin Kleppmann, *Designing Data-Intensive Applications*, ch. 2 & 7
+- PostgreSQL docs: _JSON Types_, _SELECT … FOR UPDATE SKIP LOCKED_, _pg_trgm_
+- Martin Kleppmann, _Designing Data-Intensive Applications_, ch. 2 & 7

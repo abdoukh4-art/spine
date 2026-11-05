@@ -61,6 +61,7 @@ erDiagram
         text source_severity
         int score "nullable until scored"
         text severity "derived from score"
+        timestamptz scored_at "computedAt of the projected score (ADR-0038)"
         timestamptz occurred_at
         timestamptz received_at
         timestamptz last_seen_at
@@ -69,7 +70,7 @@ erDiagram
         uuid assignee_id "logical → users"
         uuid case_id FK
         jsonb canonical "full CanonicalAlert"
-        text_arr mitre_technique_ids
+        text_arr mitre_technique_ids "incl. parents of sub-techniques (ADR-0037)"
         text_arr mitre_tactic_ids
         timestamptz updated_at
     }
@@ -106,6 +107,12 @@ erDiagram
         timestamptz fetched_at
     }
 
+    enrichment_processed_events {
+        uuid event_id PK "alert.ingested deliveries handled (ADR-0040)"
+        uuid alert_id "logical → alerts"
+        timestamptz processed_at
+    }
+
     %% ---------- scoring ----------
     alert_scores {
         uuid alert_id PK "logical → alerts"
@@ -114,6 +121,7 @@ erDiagram
         text severity
         jsonb explanation "ScoreExplanation"
         timestamptz computed_at
+        timestamptz source_occurred_at "snapshot time; stale-event guard (ADR-0042)"
     }
 
     %% ---------- playbooks ----------
@@ -159,6 +167,8 @@ erDiagram
         uuid id PK
         uuid run_id FK
         text step_id
+        uuid alert_id "logical → alerts"
+        text playbook_id
         text status "pending|approved|rejected|expired"
         text approver_role
         text prompt
@@ -170,7 +180,7 @@ erDiagram
     }
     simulated_actions {
         uuid id PK
-        text kind "firewall.block|firewall.unblock|ticket.create|chat.post"
+        text kind "firewall.block|firewall.unblock|ticket.create|ticket.close|chat.post|alert.set_status"
         text idempotency_key UK
         uuid run_id
         text step_id
@@ -201,35 +211,41 @@ erDiagram
 
 ## Key indexes and why
 
-| Index | Why |
-|---|---|
-| `alerts (received_at DESC, id DESC)` | Default queue order + keyset pagination |
-| `alerts (score DESC NULLS LAST, id DESC)` | "Highest risk first" sort |
-| `alerts (status)`, `(severity)` partial `WHERE status IN ('new','triaged','in_progress')` | Open-queue filters stay small |
-| `UNIQUE alerts (fingerprint) WHERE status NOT IN ('resolved','false_positive')` | Race-safe deduplication ([ADR-0012](../adr/0012-idempotency-and-deduplication.md)) |
-| `alerts USING gin (title gin_trgm_ops)` | `?q=` free-text search |
-| `alerts USING gin (mitre_technique_ids)` | ATT&CK filtering |
-| `domain_events (id) WHERE dispatched_at IS NULL` | The outbox relay scans only undispatched rows |
-| `playbook_runs (status) WHERE status NOT IN (terminal)` | Startup reconciler finds runs to resume |
-| `approvals (status, requested_at)` | Approval inbox |
-| `refresh_tokens (family_id)` | Revoke a whole family on reuse |
-| `audit_log (occurred_at DESC)`, `(actor_id, occurred_at DESC)` | Audit queries |
+| Index                                                                                     | Why                                                                                |
+| ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `alerts (received_at DESC, id DESC)`                                                      | Default queue order + keyset pagination                                            |
+| `alerts (score DESC NULLS LAST, id DESC)`                                                 | "Highest risk first" sort                                                          |
+| `alerts (status)`, `(severity)` partial `WHERE status IN ('new','triaged','in_progress')` | Open-queue filters stay small                                                      |
+| `UNIQUE alerts (fingerprint) WHERE status NOT IN ('resolved','false_positive')`           | Race-safe deduplication ([ADR-0012](../adr/0012-idempotency-and-deduplication.md)) |
+| `alerts USING gin (title gin_trgm_ops)`                                                   | `?q=` free-text search                                                             |
+| `alerts USING gin (mitre_technique_ids)`                                                  | ATT&CK filtering (`T1059` also matches `T1059.001`, ADR-0037)                      |
+| `domain_events (id) WHERE dispatched_at IS NULL`                                          | The outbox relay scans only undispatched rows                                      |
+| `playbook_runs (status) WHERE status NOT IN (terminal)`                                   | Startup reconciler finds runs to resume                                            |
+| `approvals (status, requested_at)`                                                        | Approval inbox                                                                     |
+| `approvals (expires_at) WHERE status = 'pending'` (0601)                                  | Approval-expiry sweeper ([ADR-0051](../adr/0051-executor-hosting-on-bullmq.md))    |
+| `simulated_actions (kind, created_at DESC, id DESC)` (0601)                               | `GET /simulated-actions?kind=` keyset pages                                        |
+| sequence `simulated_ticket_seq` (0601)                                                    | `SIM-<n>` ticket numbers of the simulated ticketing adapter                        |
+| `refresh_tokens (family_id)`                                                              | Revoke a whole family on reuse                                                     |
+| `enrichment_processed_events (alert_id)`                                                  | Find (and later purge) the inbox rows of one alert                                 |
+| `alert_scores (alert_id, computed_at DESC)`                                               | `getForAlert`: latest score across ruleset versions                                |
+| `audit_log (occurred_at DESC)`, `(actor_id, occurred_at DESC)`                            | Audit queries                                                                      |
+| `audit_log (action text_pattern_ops, id DESC)` (migration `0101`)                         | `GET /audit-log?action=<prefix>` filter                                            |
 
 ## Mapping to ECS / OCSF
 
-| Spine `CanonicalAlert` | ECS | OCSF (Detection Finding) |
-|---|---|---|
-| `source.vendor` / `source.product` | `observer.vendor` / `observer.product` | `metadata.product.vendor_name` / `.name` |
-| `source.sourceAlertId` | `event.id` | `finding_info.uid` |
-| `title` | `rule.name` / `message` | `finding_info.title` |
-| `category` | `event.category` | `category_uid` / `finding_info.types` |
-| `severity` | `event.severity` (numeric) | `severity_id` |
-| `occurredAt` | `@timestamp` | `time` |
-| `host.hostname`, `host.ips` | `host.hostname`, `host.ip` | `device.hostname`, `device.ip` |
-| `user.name`, `user.email` | `user.name`, `user.email` | `actor.user.name`, `.email_addr` |
-| `network.sourceIp` / `destinationIp` | `source.ip` / `destination.ip` | `src_endpoint.ip` / `dst_endpoint.ip` |
-| `file.sha256` | `file.hash.sha256` | `file.hashes[]` |
-| `url` | `url.full` | `url.url_string` |
-| `mitre[]` | `threat.technique.id`, `threat.tactic.id` | `attacks[]` |
-| `indicators[]` | `threat.indicator.*` | `observables[]` |
-| `labels` | `labels` | `unmapped` |
+| Spine `CanonicalAlert`               | ECS                                       | OCSF (Detection Finding)                 |
+| ------------------------------------ | ----------------------------------------- | ---------------------------------------- |
+| `source.vendor` / `source.product`   | `observer.vendor` / `observer.product`    | `metadata.product.vendor_name` / `.name` |
+| `source.sourceAlertId`               | `event.id`                                | `finding_info.uid`                       |
+| `title`                              | `rule.name` / `message`                   | `finding_info.title`                     |
+| `category`                           | `event.category`                          | `category_uid` / `finding_info.types`    |
+| `severity`                           | `event.severity` (numeric)                | `severity_id`                            |
+| `occurredAt`                         | `@timestamp`                              | `time`                                   |
+| `host.hostname`, `host.ips`          | `host.hostname`, `host.ip`                | `device.hostname`, `device.ip`           |
+| `user.name`, `user.email`            | `user.name`, `user.email`                 | `actor.user.name`, `.email_addr`         |
+| `network.sourceIp` / `destinationIp` | `source.ip` / `destination.ip`            | `src_endpoint.ip` / `dst_endpoint.ip`    |
+| `file.sha256`                        | `file.hash.sha256`                        | `file.hashes[]`                          |
+| `url`                                | `url.full`                                | `url.url_string`                         |
+| `mitre[]`                            | `threat.technique.id`, `threat.tactic.id` | `attacks[]`                              |
+| `indicators[]`                       | `threat.indicator.*`                      | `observables[]`                          |
+| `labels`                             | `labels`                                  | `unmapped`                               |

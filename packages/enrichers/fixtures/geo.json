@@ -1,0 +1,69 @@
+{
+  "description": "Synthetic IP geolocation data. Documentation IP ranges (RFC 5737 / RFC 3849) and documentation AS numbers (RFC 5398, 64496-64511) only.",
+  "entries": [
+    {
+      "ip": "203.0.113.66",
+      "country": "NL",
+      "city": "Amsterdam",
+      "asn": 64500,
+      "org": "Example Bulletproof Hosting",
+      "isTor": false
+    },
+    {
+      "ip": "203.0.113.7",
+      "country": "BR",
+      "city": "Sao Paulo",
+      "asn": 64501,
+      "org": "Example Residential ISP",
+      "isTor": false
+    },
+    {
+      "ip": "198.51.100.77",
+      "country": "DE",
+      "city": "Frankfurt",
+      "asn": 64502,
+      "org": "Example Tor Exit Relay",
+      "isTor": true
+    },
+    {
+      "ip": "198.51.100.23",
+      "country": "US",
+      "city": "Ashburn",
+      "asn": 64503,
+      "org": "Example Cloud Compute",
+      "isTor": false
+    },
+    {
+      "ip": "198.51.100.50",
+      "country": "US",
+      "city": "Boston",
+      "asn": 64504,
+      "org": "Example Security Scanning Inc",
+      "isTor": false
+    },
+    {
+      "ip": "192.0.2.10",
+      "country": "US",
+      "city": "San Jose",
+      "asn": 64505,
+      "org": "Example CDN",
+      "isTor": false
+    },
+    {
+      "ip": "2001:db8::bad",
+      "country": "SG",
+      "city": "Singapore",
+      "asn": 64506,
+      "org": "Example Transit Provider",
+      "isTor": false
+    },
+    {
+      "ip": "2001:db8:1::25",
+      "country": "FR",
+      "city": "Paris",
+      "asn": 64507,
+      "org": "Example Mail Provider",
+      "isTor": false
+    }
+  ]
+}

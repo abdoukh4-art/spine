@@ -1,0 +1,78 @@
+# Phishing triage: enrichment decides. A malicious URL, domain or sender escalates the alert
+# and pages the phishing channel; otherwise the alert is marked triaged with a low-key note.
+apiVersion: spine/v1
+kind: Playbook
+metadata:
+  id: phishing-triage
+  name: Phishing triage
+  version: 1
+  description: >-
+    Enrich URLs, domains and sender addresses of a reported phishing email; escalate when
+    any of them is known-malicious, otherwise mark the alert triaged.
+  tags: [phishing, triage]
+trigger:
+  event: alert.scored
+  when: { field: alert.category, op: eq, value: phishing }
+start: enrich
+steps:
+  - id: enrich
+    name: Check URL, domain and sender reputation
+    type: enrich
+    timeoutMs: 20000
+    retry: { maxAttempts: 2, backoffMs: 2000 }
+    onFailure: continue
+    next: classify
+
+  - id: classify
+    name: Malicious URL or sender?
+    type: branch
+    branches:
+      - when:
+          any:
+            - { field: enrichment.verdicts.url, op: contains, value: malicious }
+            - { field: enrichment.verdicts.domain, op: contains, value: malicious }
+            - { field: enrichment.verdicts.email, op: contains, value: malicious }
+        next: escalate
+      - when:
+          any:
+            - { field: enrichment.verdicts.url, op: contains, value: suspicious }
+            - { field: enrichment.verdicts.domain, op: contains, value: suspicious }
+            - { field: enrichment.verdicts.email, op: contains, value: suspicious }
+        next: notify-review
+    default: mark-triaged
+
+  - id: escalate
+    name: Escalate the alert
+    type: set_status
+    with: { status: in_progress }
+    next: notify-malicious
+
+  - id: notify-malicious
+    name: Page the phishing channel
+    type: notify
+    retry: { maxAttempts: 3, backoffMs: 1000 }
+    with:
+      channel: '#soc-phishing'
+      template: >-
+        Malicious phishing: "{{alert.title}}" to {{alert.user.email}}. Malicious indicators:
+        {{enrichment.malicious}}. Consider purging the message from all mailboxes.
+
+  - id: notify-review
+    name: Ask for a human look
+    type: notify
+    with:
+      channel: '#soc-phishing'
+      template: 'Suspicious (not confirmed) phishing "{{alert.title}}": {{enrichment.suspicious}}. Please review.'
+
+  - id: mark-triaged
+    name: Mark triaged
+    type: set_status
+    with: { status: triaged }
+    next: notify-benign
+
+  - id: notify-benign
+    name: Low-key note
+    type: notify
+    with:
+      channel: '#soc-triage'
+      template: 'Phishing report "{{alert.title}}": no malicious indicators found; marked triaged.'

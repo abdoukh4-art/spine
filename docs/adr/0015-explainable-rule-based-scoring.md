@@ -8,7 +8,7 @@
 ## Context and problem statement
 
 Analysts must decide which alert to look at first. A score from 0 to 100 helps, but only
-if analysts **trust** it, and they only trust it if they can see *why* an alert scored 87.
+if analysts **trust** it, and they only trust it if they can see _why_ an alert scored 87.
 Scores also drive automation (playbook triggers), so they must be deterministic and
 auditable: the same alert under the same ruleset must always yield the same score.
 
@@ -71,19 +71,22 @@ rules:
 - 👍 Detection engineers tune rules with plain YAML diffs.
 - 👎 Additive scoring ignores interactions (A and B together being worse than A + B).
   Workaround: an explicit combined rule `{all:[A,B]}` with bonus points.
-- 👎 Weights are expert judgment, not learned. A future ML score could run alongside as a *second opinion*.
+- 👎 Weights are expert judgment, not learned. A future ML score could run alongside as a _second opinion_.
 
 ## Pros and cons of the options
 
 ### Risk matrix
+
 - 👍 Familiar to risk managers.
 - 👎 Coarse (5×5 = 25 cells), and it needs separate likelihood/impact inputs we often don't have.
 
 ### ML model
+
 - 👍 Can learn from analyst dispositions.
 - 👎 Needs labelled data we don't have, is hard to explain, and drifts silently. A non-goal for v0.1.
 
 ### Source severity only
+
 - 👍 Zero work.
 - 👎 Every vendor's "high" means something different, and it ignores enrichment and asset context.
 
@@ -94,5 +97,5 @@ rules:
 
 ## Further reading
 
-- *The Pyramid of Pain*, David Bianco (why indicator types differ in value)
-- Google SRE Workbook, ch. on *alerting on SLOs* (for the "signal vs noise" mindset)
+- _The Pyramid of Pain_, David Bianco (why indicator types differ in value)
+- Google SRE Workbook, ch. on _alerting on SLOs_ (for the "signal vs noise" mindset)

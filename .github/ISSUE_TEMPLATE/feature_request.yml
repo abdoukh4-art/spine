@@ -1,0 +1,17 @@
+name: Feature request
+description: Propose an improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes: { label: Problem, description: Which SOC workflow pain does this address? }
+    validations: { required: true }
+  - type: textarea
+    id: proposal
+    attributes: { label: Proposal and alternatives considered }
+  - type: checkboxes
+    id: adr
+    attributes:
+      label: Architecture
+      options:
+        - label: This needs an ADR (it involves a choice between options)

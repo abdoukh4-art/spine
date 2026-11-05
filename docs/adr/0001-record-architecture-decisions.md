@@ -8,7 +8,7 @@
 ## Context and problem statement
 
 Spine is both a working product and a **learning resource**. Readers have to be able to
-see *why* the system looks the way it does, not only *what* it is. Decisions that live
+see _why_ the system looks the way it does, not only _what_ it is. Decisions that live
 only in chat logs, commit messages or someone's head are lost, and future contributors
 then either re-argue them forever or change them without knowing the trade-offs.
 
@@ -28,7 +28,7 @@ then either re-argue them forever or change them without knowing the trade-offs.
 ## Decision outcome
 
 **Chosen option: MADR**, with three Spine-specific sections it requires:
-*Considered options* (rejected alternatives included), *Consequences* (good and bad),
+_Considered options_ (rejected alternatives included), _Consequences_ (good and bad),
 and **What would make us revisit this** (concrete triggers).
 
 Rules:
@@ -49,18 +49,22 @@ Rules:
 ## Pros and cons of the options
 
 ### MADR
+
 - 👍 Structured, so readers know where to look. It's widely used and has a template.
 - 👎 Slightly more ceremony than Nygard's format.
 
 ### Nygard format
+
 - 👍 Very lightweight.
 - 👎 Has no explicit "options considered" section, so newcomers lose the most educational part.
 
 ### Wiki
+
 - 👍 Easy to edit.
 - 👎 Not versioned with the code and not reviewed in PRs. Drifts out of date.
 
 ### Design docs only
+
 - 👍 Good for big up-front designs.
 - 👎 Too heavy for the many small decisions (e.g. "which pagination style").
 
@@ -72,5 +76,5 @@ Rules:
 
 ## Further reading
 
-- Michael Nygard, *Documenting Architecture Decisions* (2011)
+- Michael Nygard, _Documenting Architecture Decisions_ (2011)
 - MADR project: <https://adr.github.io/madr/>

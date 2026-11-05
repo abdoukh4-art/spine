@@ -51,15 +51,18 @@ justifies one.
 ## Pros and cons of the options
 
 ### MUI / Ant
+
 - 👍 Rich and fast to build with.
 - 👎 Large bundles, a theme system to learn, and a heavy look that's hard to make our own.
 
 ### Radix + Tailwind
+
 - 👍 Accessible primitives.
 - 👎 Many dependencies, and Tailwind adds a build concept. A reasonable alternative if the
   component count grows past ~30.
 
 ### React Aria
+
 - 👍 Best-in-class accessibility.
 - 👎 Large API surface for a learner.
 
@@ -71,4 +74,4 @@ justifies one.
 
 - W3C WAI-ARIA Authoring Practices Guide (APG)
 - WCAG 2.2 quick reference
-- TanStack Query docs, *Important Defaults*
+- TanStack Query docs, _Important Defaults_

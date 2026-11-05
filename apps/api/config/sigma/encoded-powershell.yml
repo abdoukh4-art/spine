@@ -1,0 +1,30 @@
+# Spine demo catalog rule (written for Spine; not copied from SigmaHQ). See ADR-0098.
+# Spine never evaluates 'detection': it's here because Sigma rules require it.
+title: Encoded PowerShell command line
+id: 3555413d-8d66-4035-ab94-17008e6e618e
+status: test
+description: >-
+  PowerShell started with an encoded command (-EncodedCommand / -enc), a common way to hide
+  a script's content from casual review and simple command-line logging.
+references:
+  - https://attack.mitre.org/techniques/T1059/001/
+author: Spine maintainers
+date: 2026-11-05
+tags:
+  - attack.execution
+  - attack.t1059.001
+  - attack.t1027
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    Image|endswith: '\powershell.exe'
+    CommandLine|contains:
+      - ' -enc '
+      - ' -EncodedCommand '
+  condition: selection
+falsepositives:
+  - Software deployment and management agents that wrap scripts this way
+  - Administrators running encoded one-liners interactively
+level: high

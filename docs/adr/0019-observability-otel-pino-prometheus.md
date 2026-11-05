@@ -60,13 +60,16 @@ saturation, errors).
 ## Pros and cons of the options
 
 ### prom-client only
+
 - 👍 Simple.
 - 👎 No traces, so async debugging is guesswork.
 
 ### Vendor APM
+
 - 👎 Not self-hostable or offline, and it costs money.
 
 ### Elastic stack
+
 - 👍 Powerful search.
 - 👎 Heavy (several GB of RAM) for a laptop demo.
 
@@ -77,6 +80,6 @@ saturation, errors).
 
 ## Further reading
 
-- *Observability Engineering*, Majors, Fong-Jones, Miranda (O'Reilly, 2022)
-- Brendan Gregg, *The USE Method*; Tom Wilkie, *The RED Method*
+- _Observability Engineering_, Majors, Fong-Jones, Miranda (O'Reilly, 2022)
+- Brendan Gregg, _The USE Method_; Tom Wilkie, _The RED Method_
 - Google SRE Book, ch. 6 "Monitoring Distributed Systems" (the four golden signals)

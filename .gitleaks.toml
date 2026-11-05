@@ -1,0 +1,15 @@
+# gitleaks configuration: default rules plus an allow-list for obviously fake test values.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Synthetic test/demo values (never real secrets)"
+paths = [
+  '''docs/.*\.md''',
+  '''pnpm-lock\.yaml''',
+]
+regexes = [
+  '''test-secret-that-is-at-least-32-characters-long''',
+  '''openapi-generation-only-secret-0123456789''',
+  '''dev-only-insecure-[a-z0-9-]+''',
+]

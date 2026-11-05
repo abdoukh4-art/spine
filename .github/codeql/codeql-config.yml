@@ -1,0 +1,9 @@
+# CodeQL scans production code. Tests are excluded because some deliberately contain
+# hostile inputs (e.g. catastrophic regexes asserting that our ReDoS guard rejects them).
+name: spine-codeql
+paths-ignore:
+  - '**/test/**'
+  - '**/*.test.ts'
+  - '**/*.test.tsx'
+  - 'e2e/**'
+  - 'load/**'

@@ -1,0 +1,27 @@
+# Spine demo catalog rule (written for Spine; not copied from SigmaHQ). See ADR-0098.
+title: LSASS memory read by a non-system process
+id: ecbe0cd9-228f-4cc5-9857-26518d542c2f
+status: experimental
+description: >-
+  A process outside the expected system set opened lsass.exe with memory-read access, the way
+  credential dumping tools do.
+references:
+  - https://attack.mitre.org/techniques/T1003/001/
+author: Spine maintainers
+date: 2026-11-05
+tags:
+  - attack.credential-access
+  - attack.t1003.001
+logsource:
+  category: process_access
+  product: windows
+detection:
+  selection:
+    TargetImage|endswith: '\lsass.exe'
+    GrantedAccess|contains: '0x10'
+  filter_system:
+    SourceImage|startswith: 'C:\Windows\System32\'
+  condition: selection and not filter_system
+falsepositives:
+  - Endpoint security and backup agents
+level: critical

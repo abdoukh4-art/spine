@@ -29,14 +29,14 @@ We need one internal shape that every source is mapped into **at the edge**.
 
 **Chosen option 1.** `CanonicalAlert` (see `packages/shared-schema/src/alert.ts`):
 
-| Group | Fields | Inspired by |
-|---|---|---|
-| identity | `source.{vendor,product,sourceAlertId}`, `title`, `description`, `category`, `occurredAt` | OCSF `metadata.product`, `finding_info` |
-| severity | `severity` (source-reported: `informational…critical`) | OCSF `severity_id` |
-| entities | `host.{hostname,ips,os}`, `user.{name,email}`, `network.{sourceIp,sourcePort,destinationIp,destinationPort,protocol}`, `file.{name,path,sha256,md5}`, `url` | ECS `host.*`, `user.*`, `source.*`, `destination.*`, `file.hash.*`, `url.full` |
-| observables | `indicators[]: {type, value}`, extracted from entities + explicitly supplied, normalized (lower-cased, de-duplicated) | OCSF `observables` |
-| tactics | `mitre[]: {tacticId, techniqueId, …}` with validated IDs (`TA0001`, `T1059.001`) | MITRE ATT&CK |
-| extras | `labels: Record<string,string>`, `raw: unknown` (≤ 64 KiB) | ECS `labels` |
+| Group       | Fields                                                                                                                                                      | Inspired by                                                                    |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| identity    | `source.{vendor,product,sourceAlertId}`, `title`, `description`, `category`, `occurredAt`                                                                   | OCSF `metadata.product`, `finding_info`                                        |
+| severity    | `severity` (source-reported: `informational…critical`)                                                                                                      | OCSF `severity_id`                                                             |
+| entities    | `host.{hostname,ips,os}`, `user.{name,email}`, `network.{sourceIp,sourcePort,destinationIp,destinationPort,protocol}`, `file.{name,path,sha256,md5}`, `url` | ECS `host.*`, `user.*`, `source.*`, `destination.*`, `file.hash.*`, `url.full` |
+| observables | `indicators[]: {type, value}`, extracted from entities + explicitly supplied, normalized (lower-cased, de-duplicated)                                       | OCSF `observables`                                                             |
+| tactics     | `mitre[]: {tacticId, techniqueId, …}` with validated IDs (`TA0001`, `T1059.001`)                                                                            | MITRE ATT&CK                                                                   |
+| extras      | `labels: Record<string,string>`, `raw: unknown` (≤ 64 KiB)                                                                                                  | ECS `labels`                                                                   |
 
 Normalizers (`suricata-eve`, `cef` syslog lines, `canonical` passthrough, generic webhook
 mapping) live in the Ingestion module. They are **pure functions**: input in, `CanonicalAlert`
@@ -56,14 +56,17 @@ also a TypeScript API. A mapping table to ECS/OCSF lives in
 ## Pros and cons of the options
 
 ### Full OCSF
+
 - 👍 Vendor-neutral standard with growing adoption.
 - 👎 Very large (hundreds of attributes, numeric enums like `severity_id`). It hurts readability for learners and API ergonomics.
 
 ### Full ECS
+
 - 👍 Well documented, and used by Elastic.
 - 👎 Event/log-oriented rather than alert-oriented, with deeply nested dotted names.
 
 ### Lazy normalization
+
 - 👍 No upfront mapping work.
 - 👎 Pushes N×M complexity onto every consumer. The exact problem we're solving.
 

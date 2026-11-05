@@ -1,0 +1,29 @@
+# Prometheus configuration for the compose stack (ADR-0019, ADR-0084).
+# Both Spine processes expose OpenTelemetry metrics in Prometheus format on :9464/metrics.
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+  external_labels:
+    deployment: compose
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+# No Alertmanager in the local stack: alerts are visible at http://localhost:9090/alerts.
+# In production, add an `alerting:` block pointing at your Alertmanager (see slos.md).
+
+scrape_configs:
+  - job_name: spine-api
+    static_configs:
+      - targets: ['api:9464']
+        labels: { service: spine-api }
+
+  - job_name: spine-worker
+    static_configs:
+      - targets: ['worker:9464']
+        labels: { service: spine-worker }
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']

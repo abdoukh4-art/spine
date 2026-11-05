@@ -1,0 +1,33 @@
+# ADR-0022: weekly, grouped updates; every PR must pass the full CI suite.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    target-branch: develop
+    open-pull-requests-limit: 10
+    groups:
+      opentelemetry: { patterns: ['@opentelemetry/*'] }
+      react: { patterns: ['react', 'react-dom', '@types/react*', 'react-router'] }
+      fastify: { patterns: ['fastify', '@fastify/*', 'fastify-*'] }
+      testing:
+        {
+          patterns:
+            [
+              'vitest',
+              '@vitest/*',
+              '@playwright/*',
+              'testcontainers',
+              '@testcontainers/*',
+              'fast-check',
+            ],
+        }
+      lint: { patterns: ['eslint', '@eslint/*', 'typescript-eslint', 'prettier', 'eslint-*'] }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+    target-branch: develop
+  - package-ecosystem: docker
+    directory: /infra/docker
+    schedule: { interval: weekly }
+    target-branch: develop

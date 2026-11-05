@@ -1,0 +1,58 @@
+# Spine migrations as a one-shot systemd service (ADR-0092, docs/operations/deployment.md#systemd).
+#
+# Runs as the table OWNER (DATABASE_MIGRATION_URL from /etc/spine/migrate.env, mode 0600 root:root,
+# never readable by the API or worker), applies pending migrations, creates/updates the runtime
+# login role from DATABASE_URL, and exits. spine-api and spine-worker require it, so they start
+# only after it succeeded and never hold owner credentials.
+[Unit]
+Description=Spine database migrations and runtime role
+Documentation=https://github.com/abdoukh4-art/spine/blob/main/docs/operations/deployment.md
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Stay "active" after success so Requires= in the api/worker units holds; restart this unit to re-run.
+RemainAfterExit=yes
+User=spine
+Group=spine
+WorkingDirectory=/opt/spine
+EnvironmentFile=/etc/spine/spine.env
+# Read by systemd (as root) before dropping to `spine`; holds only DATABASE_MIGRATION_URL.
+EnvironmentFile=/etc/spine/migrate.env
+Environment=NODE_ENV=production SERVICE_NAME=spine-migrate MIGRATIONS_DIR=/opt/spine/migrations CONFIG_DIR=/opt/spine/config
+ExecStart=/usr/bin/node --enable-source-maps dist/cli/migrate.js
+TimeoutStartSec=10min
+MemoryMax=256M
+
+# --- Sandboxing: the process can read its code and talk TCP/IP, nothing else ---------------
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+ProcSubset=pid
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RemoveIPC=yes
+UMask=0077
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+# V8's JIT needs writable+executable memory, so MemoryDenyWriteExecute must stay off.
+MemoryDenyWriteExecute=no
+
+[Install]
+WantedBy=multi-user.target
