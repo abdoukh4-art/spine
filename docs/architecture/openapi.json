@@ -3248,6 +3248,238 @@
         }
       }
     },
+    "/api/v1/alerts/{id}/ocsf": {
+      "get": {
+        "summary": "The alert as an OCSF 1.9.0 Detection Finding (class 2004), for SIEMs and data lakes",
+        "tags": [
+          "alerts"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "activity_id": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "activity_name": {
+                      "type": "string"
+                    },
+                    "category_uid": {
+                      "type": "number",
+                      "enum": [
+                        2
+                      ]
+                    },
+                    "category_name": {
+                      "type": "string"
+                    },
+                    "class_uid": {
+                      "type": "number",
+                      "enum": [
+                        2004
+                      ]
+                    },
+                    "class_name": {
+                      "type": "string"
+                    },
+                    "type_uid": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "type_name": {
+                      "type": "string"
+                    },
+                    "time": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "start_time": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "severity_id": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "severity": {
+                      "type": "string"
+                    },
+                    "status_id": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "is_alert": {
+                      "type": "boolean"
+                    },
+                    "risk_score": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "risk_level_id": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "metadata": {
+                      "type": "object",
+                      "properties": {
+                        "version": {
+                          "type": "string"
+                        },
+                        "uid": {
+                          "type": "string"
+                        },
+                        "product": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name"
+                          ],
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "version",
+                        "uid",
+                        "product"
+                      ],
+                      "additionalProperties": {}
+                    },
+                    "finding_info": {
+                      "type": "object",
+                      "properties": {
+                        "uid": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "uid",
+                        "title"
+                      ],
+                      "additionalProperties": {}
+                    },
+                    "device": {
+                      "type": "object",
+                      "properties": {
+                        "type_id": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "type_id"
+                      ],
+                      "additionalProperties": {}
+                    },
+                    "observables": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "type_id": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "value": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "type_id",
+                          "value"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "unmapped": {
+                      "type": "object",
+                      "properties": {
+                        "spine": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "spine"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "activity_id",
+                    "activity_name",
+                    "category_uid",
+                    "category_name",
+                    "class_uid",
+                    "class_name",
+                    "type_uid",
+                    "type_name",
+                    "time",
+                    "start_time",
+                    "severity_id",
+                    "severity",
+                    "status_id",
+                    "status",
+                    "message",
+                    "is_alert",
+                    "metadata",
+                    "finding_info",
+                    "unmapped"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/cases": {
       "get": {
         "summary": "List cases, newest first",

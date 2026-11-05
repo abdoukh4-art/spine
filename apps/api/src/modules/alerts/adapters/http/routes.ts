@@ -7,6 +7,7 @@ import {
   CaseSchema,
   CreateCaseRequestSchema,
   IdSchema,
+  OcsfDetectionFindingSchema,
   pageSchema,
   UpdateAlertRequestSchema,
   UpdateCaseRequestSchema,
@@ -15,6 +16,8 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { requireUser } from '../../../../platform/http/access.js';
+import { spineVersion } from '../../../../platform/version.js';
+import { toOcsfDetectionFinding } from '../../domain/ocsf.js';
 import type { AlertsService } from '../../application/alerts-service.js';
 import type { CasesService } from '../../application/cases-service.js';
 
@@ -54,6 +57,22 @@ export function registerAlertRoutes(
       },
     },
     (req) => alerts.detail(req.params.id),
+  );
+
+  app.get(
+    '/alerts/:id/ocsf',
+    {
+      config: { access: { role: 'viewer' } },
+      schema: {
+        tags: ['alerts'],
+        summary:
+          'The alert as an OCSF 1.9.0 Detection Finding (class 2004), for SIEMs and data lakes',
+        params: IdParams,
+        response: { 200: OcsfDetectionFindingSchema },
+      },
+    },
+    async (req) =>
+      toOcsfDetectionFinding(await alerts.detail(req.params.id), { version: spineVersion() }),
   );
 
   app.patch(

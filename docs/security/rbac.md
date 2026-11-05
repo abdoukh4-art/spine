@@ -18,7 +18,7 @@ and tested in `apps/api/test/unit/platform/http.test.ts`.
 | Auth                 | `GET /auth/me`                                                                                                  | viewer                                                        |
 | Users                | `GET/POST/PATCH /users…`                                                                                        | admin                                                         |
 | Audit                | `GET /audit-log`                                                                                                | admin                                                         |
-| Alerts               | `GET /alerts`, `GET /alerts/:id`                                                                                | viewer                                                        |
+| Alerts               | `GET /alerts`, `GET /alerts/:id`, `GET /alerts/:id/ocsf`                                                        | viewer                                                        |
 | Alerts               | `PATCH /alerts/:id`, `POST /alerts/:id/enrich`                                                                  | analyst                                                       |
 | Ingestion            | `POST /alerts`, `POST /ingest/batch`                                                                            | analyst                                                       |
 | Ingestion            | `POST /ingest/webhooks/:sourceId`                                                                               | webhook (HMAC)                                                |

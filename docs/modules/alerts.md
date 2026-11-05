@@ -22,6 +22,7 @@ flowchart LR
   subgraph HTTP
     L[GET /alerts] --> S
     D[GET /alerts/:id] --> S
+    O[GET /alerts/:id/ocsf] --> S
     P[PATCH /alerts/:id] --> S
     C[/cases routes/] --> CS
   end
@@ -35,14 +36,15 @@ flowchart LR
   S -. AlertDetailSources port .-> X[enrichment · scoring · playbooks]
 ```
 
-| Layer          | Files                                                           | What it does                                                                                                 |
-| -------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `domain/`      | `status-change.ts`                                              | `planStatusChange`: no-op / illegal / change, and the first-close `resolvedAt` rule                          |
-|                | `mitre-index.ts`                                                | Filter ids (sub-technique + parent), `ILIKE` escaping                                                        |
-| `application/` | `alerts-service.ts`                                             | Implements `AlertsPublicApi`; list, detail, triage update (one transaction with the event)                   |
-|                | `cases-service.ts`, `project-score.ts`, `ports.ts`, `errors.ts` | Cases CRUD, the `alert.scored` subscriber, repository and `AlertDetailSources` ports, `OpenAlertExistsError` |
-| `adapters/`    | `postgres/alert-repository.ts`, `case-repository.ts`, `rows.ts` | Kysely queries, keyset predicates, row ↔ `Alert`/`AlertSummary`/`Case` mapping                              |
-|                | `http/routes.ts`                                                | `/alerts` and `/cases` routes with Zod schemas from `@spine/shared-schema`                                   |
+| Layer          | Files                                                           | What it does                                                                                                              |
+| -------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `domain/`      | `status-change.ts`                                              | `planStatusChange`: no-op / illegal / change, and the first-close `resolvedAt` rule                                       |
+|                | `mitre-index.ts`                                                | Filter ids (sub-technique + parent), `ILIKE` escaping                                                                     |
+|                | `ocsf.ts`                                                       | `toOcsfDetectionFinding`: the alert as an OCSF 1.9.0 Detection Finding (ADR-0097), validated against a generated contract |
+| `application/` | `alerts-service.ts`                                             | Implements `AlertsPublicApi`; list, detail, triage update (one transaction with the event)                                |
+|                | `cases-service.ts`, `project-score.ts`, `ports.ts`, `errors.ts` | Cases CRUD, the `alert.scored` subscriber, repository and `AlertDetailSources` ports, `OpenAlertExistsError`              |
+| `adapters/`    | `postgres/alert-repository.ts`, `case-repository.ts`, `rows.ts` | Kysely queries, keyset predicates, row ↔ `Alert`/`AlertSummary`/`Case` mapping                                           |
+|                | `http/routes.ts`                                                | `/alerts` and `/cases` routes with Zod schemas from `@spine/shared-schema`                                                |
 
 Storage: the `canonical` jsonb column keeps what the source said (the prepared canonical
 alert); lifecycle fields assigned by Spine (`status`, counters, timestamps, `score`,

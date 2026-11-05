@@ -34,6 +34,7 @@ const EXPECTED: Record<string, { policy: Policy; implemented?: true }> = {
   // alerts / cases
   [`GET ${V}/alerts`]: { policy: 'viewer' },
   [`GET ${V}/alerts/:id`]: { policy: 'viewer' },
+  [`GET ${V}/alerts/:id/ocsf`]: { policy: 'viewer' },
   [`PATCH ${V}/alerts/:id`]: { policy: 'analyst' },
   [`GET ${V}/cases`]: { policy: 'viewer' },
   [`GET ${V}/cases/:id`]: { policy: 'viewer' },

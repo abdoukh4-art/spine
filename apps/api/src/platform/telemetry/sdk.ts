@@ -26,6 +26,7 @@ import type { Logger } from '../logger.js';
 import type { Telemetry } from './index.js';
 import { traceparentOf } from './propagation.js';
 import { registerProcessMetrics } from './process-metrics.js';
+import { spineVersion } from '../version.js';
 
 /** The subset of configuration telemetry needs (keeps tests and the preload small). */
 export type TelemetryConfig = Pick<
@@ -35,11 +36,6 @@ export type TelemetryConfig = Pick<
 
 /** Paths whose incoming requests are not traced: probes and scrapes would drown real traffic. */
 const UNTRACED_PATHS = new Set(['/healthz', '/readyz', '/metrics']);
-
-/** Service version reported as `service.version` (set by the image build; see api.Dockerfile). */
-function serviceVersion(): string {
-  return process.env.SPINE_VERSION ?? process.env.npm_package_version ?? '0.0.0-dev';
-}
 
 /** Builds the span processors: OTLP/HTTP export when an endpoint is set, otherwise none. */
 export function spanProcessorsFor(config: TelemetryConfig): SpanProcessor[] {
@@ -155,7 +151,7 @@ export function startTelemetry(config: TelemetryConfig, logger: Logger): Telemet
   const sdk = new NodeSDK({
     resource: resourceFromAttributes({
       'service.name': config.SERVICE_NAME,
-      'service.version': serviceVersion(),
+      'service.version': spineVersion(),
       'deployment.environment.name': config.NODE_ENV,
     }),
     // envDetector honours OTEL_RESOURCE_ATTRIBUTES; hostDetector adds host.name.
