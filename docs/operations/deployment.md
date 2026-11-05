@@ -135,7 +135,7 @@ For a VM where Postgres and Redis are managed services or separate hosts.
 pnpm install --frozen-lockfile && pnpm --filter @spine/api build
 pnpm --filter @spine/api deploy --prod --legacy /tmp/spine-release
 sudo mkdir -p /opt/spine && sudo cp -r apps/api/dist apps/api/migrations /tmp/spine-release/node_modules /tmp/spine-release/package.json /opt/spine/  # package.json: "type": "module"
-sudo mkdir -p /opt/spine/config   # rulesets / playbooks (CONFIG_DIR)
+sudo mkdir -p /opt/spine/config   # scoring ruleset, playbooks, Sigma catalog (CONFIG_DIR)
 
 # 2. Service account and configuration
 sudo useradd --system --no-create-home --shell /usr/sbin/nologin spine

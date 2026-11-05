@@ -293,6 +293,37 @@ describe('POST /alerts', () => {
   });
 });
 
+describe('Sigma rule catalog (ADR-0098)', () => {
+  it('enriches an alert that names a catalog rule, and strips spoofed sigma_* labels', async () => {
+    // config/sigma/encoded-powershell.yml, loaded at startup from CONFIG_DIR.
+    const ruleId = '3555413d-8d66-4035-ab94-17008e6e618e';
+    const res = await post(
+      alertBody({
+        source: { vendor: 'Elastic', product: 'Security', sourceAlertId: 'sigma-int-1' },
+        title: 'Encoded PowerShell on ws-0042',
+        mitre: [],
+        labels: { sigma_rule_id: ruleId, sigma_level: 'informational' },
+      }),
+    );
+    expect(res.statusCode, res.body).toBe(202);
+    const row = await alertRow(res.json<{ alertId: string }>().alertId);
+    const canonical = row.canonical as CanonicalAlertInput;
+    expect(canonical.mitre).toEqual([
+      { techniqueId: 'T1059.001', tacticId: 'TA0002', tacticName: 'Execution' },
+      { techniqueId: 'T1027', tacticId: 'TA0002', tacticName: 'Execution' },
+    ]);
+    // The filter index adds parents of sub-techniques (mitre-index.ts), so T1059 finds it too.
+    expect(row.mitre_technique_ids).toEqual(['T1027', 'T1059', 'T1059.001']);
+    expect(canonical.labels).toMatchObject({
+      sigma_rule_id: ruleId,
+      sigma_title: 'Encoded PowerShell command line',
+      sigma_level: 'high', // the catalog's, not the spoofed 'informational'
+      sigma_status: 'test',
+    });
+    expect(canonical.labels?.sigma_falsepositives).toMatch(/deployment and management agents/);
+  });
+});
+
 describe('Idempotency-Key', () => {
   const body = alertBody({ source: { vendor: 'Acme', product: 'Idem', sourceAlertId: 'idem-1' } });
 

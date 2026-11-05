@@ -98,6 +98,8 @@ curl -X POST localhost:3000/api/v1/ingest/webhooks/suricata -H 'content-type: ap
 | Normalizers never throw on malformed input                                              | `suricata-eve.test.ts`, `cef.test.ts` › _rejects … with a typed error_                                               |
 | Stored `raw` is ≤ 64 KiB of UTF-8 JSON                                                  | `prepare-alert.test.ts` › _counts UTF-8 bytes…_, `ingestion.test.ts` › _caps an oversized raw payload_               |
 | A webhook is accepted only with a valid, fresh signature over the exact raw body        | `webhook-signature.test.ts`, `ingestion.test.ts` › _rejects bad, stale and missing signatures with 401_              |
+| Only the Sigma catalog writes `sigma_*` labels (senders can set `sigma_rule_id` only)   | `sigma.test.ts` › _strips spoofed sigma_\* labels…_ (mutation-checked), `ingestion.test.ts` › \_Sigma rule catalog_  |
+| An invalid Sigma catalog stops startup with every problem listed                        | `sigma.test.ts` › _fails startup with every problem listed…_                                                         |
 
 ## Failure modes
 
@@ -113,6 +115,12 @@ curl -X POST localhost:3000/api/v1/ingest/webhooks/suricata -H 'content-type: ap
 | Body > 10 MiB (batch) / > 1 MiB (others)                             | `413`                                                                                  | _rejects bodies over 10 MiB with 413_                                        |
 
 ## How to extend it
+
+**Add a Sigma rule to the catalog** ([ADR-0098](../adr/0098-sigma-rule-catalog.md)): drop the rule's
+YAML into `config/sigma/` (one rule per file, with an `id`) and restart. Senders link alerts to it
+with the label `sigma_rule_id`. Spine merges the rule's ATT&CK tags and adds `sigma_title`,
+`sigma_level`, `sigma_status`, `sigma_falsepositives` and `sigma_references`. It never evaluates
+`detection`. A rule that doesn't validate stops startup and names the file and the field.
 
 **Add a new source format** (e.g. Zeek notice logs):
 

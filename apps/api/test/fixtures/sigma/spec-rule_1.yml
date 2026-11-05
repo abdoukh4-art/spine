@@ -1,0 +1,29 @@
+# Verbatim copy of tests/schema/rules/rule_1.yml from https://github.com/SigmaHQ/sigma-specification
+# (commit ba9251aa834b11a70dbf80836b453dba99c5159e). The Sigma specification is public domain.
+title: A Title
+id: 545a5da6-f103-4919-a519-e9aec1026ee4
+related:
+  - id: 6c82cf5c-090d-4d57-9188-533577631108
+    type: similar
+status: test
+description: a very good information string that need to be written
+references:
+  - https://123.456
+  - https://789.963
+author: SomeOne
+date: 2017-05-09
+modified: 2023-04-14
+tags:
+  - attack.defense-evasion
+  - attack.t1211
+  - attack.t1562.001
+logsource:
+  product: windows
+  service: application
+detection:
+  selection:
+    Provider_Name: 'Application Error'
+  condition: selection
+falsepositives:
+  - a string
+level: high
