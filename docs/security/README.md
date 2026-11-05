@@ -19,3 +19,19 @@
    CHECK constraints, unique indexes), plus proxy-level headers and TLS.
 5. **Secure defaults.** `COOKIE_SECURE=true`, API docs off in production, placeholder secrets rejected in production.
 6. **No real side effects.** Response adapters are simulated by design.
+
+## Verifying a release
+
+Released images are signed keylessly with Sigstore cosign and carry SLSA build provenance
+([ADR-0099](../adr/0099-supply-chain-pinning-signing-provenance.md)). To check that an image was
+built by this repository's release workflow:
+
+```bash
+cosign verify ghcr.io/abdoukh4-art/spine-api:0.1.0 \
+  --certificate-identity 'https://github.com/abdoukh4-art/spine/.github/workflows/release.yml@refs/heads/main' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+gh attestation verify oci://ghcr.io/abdoukh4-art/spine-api:0.1.0 --repo abdoukh4-art/spine
+```
+
+Use the same commands for `spine-console`. These workflows run on the first release after `develop`
+is merged into `main`; until then there is nothing to verify.
